@@ -3239,7 +3239,7 @@
           {
             "name": "commandType",
             "type": "uint8",
-            "internalType": "enum CommandType"
+            "internalType": \"enum  CommandType"
           },
           {
             "name": "inputs",
@@ -3342,7 +3342,7 @@
           {
             "name": "commandType",
             "type": "uint8",
-            "internalType": "enum CommandType"
+            "internalType": "enum  CommandType"
           },
           {
             "name": "inputs",
@@ -3483,7 +3483,7 @@
       {
         "name": "commandType",
         "type": "uint8",
-        "internalType": "enum CommandType"
+        "internalType": \"enum  CommandType"
       }
     ]
   },
