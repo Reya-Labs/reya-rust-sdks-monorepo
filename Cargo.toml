@@ -37,6 +37,7 @@ alloy-json-abi = { version = "0.7.2", default-features = false }
 alloy-primitives = { version = "0.7.2", default-features = false }
 alloy-sol-types = { version = "0.7.2", default-features = false }
 
+"serde_json" = "1.0.117"
 # async
 tokio = "1"
 # misc

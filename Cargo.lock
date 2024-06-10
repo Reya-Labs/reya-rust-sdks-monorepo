@@ -2846,6 +2846,7 @@ dependencies = [
  "eyre",
  "futures",
  "futures-util",
+ "serde_json",
  "tokio",
 ]
 

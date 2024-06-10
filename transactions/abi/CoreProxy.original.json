@@ -328,7 +328,7 @@
         {
           "name": "accountPerms",
           "type": "tuple[]",
-          "internalType": "AccountPermissions[]",
+          "internalType": "struct AccountPermissions[]",
           "components": [
             {
               "name": "user",
@@ -388,7 +388,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "CollateralInfo",
+          "internalType": "struct CollateralInfo",
           "components": [
             {
               "name": "netDeposits",
@@ -461,7 +461,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "MarginInfo",
+          "internalType": "struct MarginInfo",
           "components": [
             {
               "name": "collateral",
@@ -537,7 +537,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "MarginInfo",
+          "internalType": "struct MarginInfo",
           "components": [
             {
               "name": "collateral",
@@ -608,7 +608,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "MarginInfo",
+          "internalType": "struct MarginInfo",
           "components": [
             {
               "name": "collateral",
@@ -1102,7 +1102,7 @@
         {
           "name": "filledExposures",
           "type": "tuple[]",
-          "internalType": "FilledExposure[]",
+          "internalType": "struct FilledExposure[]",
           "components": [
             {
               "name": "riskMatrixIndex",
@@ -1984,7 +1984,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "AutoExchangeConfig",
+          "internalType": "struct AutoExchangeConfig",
           "components": [
             {
               "name": "totalAutoExchangeThresholdInUSD",
@@ -2021,7 +2021,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "AutoExchangeConfig",
+          "internalType": "struct AutoExchangeConfig",
           "components": [
             {
               "name": "totalAutoExchangeThresholdInUSD",
@@ -2072,7 +2072,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "AutoExchangeConfig",
+          "internalType": "struct AutoExchangeConfig",
           "components": [
             {
               "name": "totalAutoExchangeThresholdInUSD",
@@ -2177,7 +2177,7 @@
         {
           "name": "input",
           "type": "tuple",
-          "internalType": "TriggerAutoExchangeInput",
+          "internalType": "struct TriggerAutoExchangeInput",
           "components": [
             {
               "name": "accountId",
@@ -2211,7 +2211,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "AutoExchangeAmounts",
+          "internalType": "struct AutoExchangeAmounts",
           "components": [
             {
               "name": "collateralAmountToLiquidator",
@@ -2364,7 +2364,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "CollateralConfig",
+          "internalType": "struct CollateralConfig",
           "components": [
             {
               "name": "depositingEnabled",
@@ -2411,7 +2411,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "ParentCollateralConfig",
+          "internalType": "struct ParentCollateralConfig",
           "components": [
             {
               "name": "collateralAddress",
@@ -2438,7 +2438,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "CachedCollateralConfig",
+          "internalType": "struct CachedCollateralConfig",
           "components": [
             {
               "name": "collateralPoolId",
@@ -2479,7 +2479,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "GlobalCollateralConfig",
+          "internalType": "struct GlobalCollateralConfig",
           "components": [
             {
               "name": "collateralAdapter",
@@ -2501,7 +2501,7 @@
         {
           "name": "cachedConfig",
           "type": "tuple",
-          "internalType": "GlobalCachedCollateralConfig",
+          "internalType": "struct GlobalCachedCollateralConfig",
           "components": [
             {
               "name": "collateralAddress",
@@ -2545,7 +2545,7 @@
         {
           "name": "baseConfig",
           "type": "tuple",
-          "internalType": "CollateralConfig",
+          "internalType": "struct CollateralConfig",
           "components": [
             {
               "name": "depositingEnabled",
@@ -2592,7 +2592,7 @@
         {
           "name": "parentConfig",
           "type": "tuple",
-          "internalType": "ParentCollateralConfig",
+          "internalType": "struct ParentCollateralConfig",
           "components": [
             {
               "name": "collateralAddress",
@@ -2632,7 +2632,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "GlobalCollateralConfig",
+          "internalType": "struct GlobalCollateralConfig",
           "components": [
             {
               "name": "collateralAdapter",
@@ -2694,7 +2694,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "CollateralConfig",
+          "internalType": "struct CollateralConfig",
           "components": [
             {
               "name": "depositingEnabled",
@@ -2747,7 +2747,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "ParentCollateralConfig",
+          "internalType": "struct ParentCollateralConfig",
           "components": [
             {
               "name": "collateralAddress",
@@ -2780,7 +2780,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "GlobalCollateralConfig",
+          "internalType": "struct GlobalCollateralConfig",
           "components": [
             {
               "name": "collateralAdapter",
@@ -2871,7 +2871,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "LimitConfig",
+          "internalType": "struct LimitConfig",
           "components": [
             {
               "name": "maxMarkets",
@@ -3031,7 +3031,7 @@
         {
           "name": "limits",
           "type": "tuple",
-          "internalType": "LimitConfig",
+          "internalType": "struct LimitConfig",
           "components": [
             {
               "name": "maxMarkets",
@@ -3235,12 +3235,12 @@
         {
           "name": "commands",
           "type": "tuple[]",
-          "internalType": "Command[]",
+          "internalType": "struct Command[]",
           "components": [
             {
               "name": "commandType",
               "type": "uint8",
-              "internalType": "CommandType"
+              "internalType": "enum CommandType"
             },
             {
               "name": "inputs",
@@ -3269,7 +3269,7 @@
         {
           "name": "usdNodeMarginInfo",
           "type": "tuple",
-          "internalType": "MarginInfo",
+          "internalType": "struct MarginInfo",
           "components": [
             {
               "name": "collateral",
@@ -3338,12 +3338,12 @@
         {
           "name": "commands",
           "type": "tuple[]",
-          "internalType": "Command[]",
+          "internalType": "struct Command[]",
           "components": [
             {
               "name": "commandType",
               "type": "uint8",
-              "internalType": "CommandType"
+              "internalType": "enum CommandType"
             },
             {
               "name": "inputs",
@@ -3365,7 +3365,7 @@
         {
           "name": "sig",
           "type": "tuple",
-          "internalType": "EIP712Signature",
+          "internalType": "struct EIP712Signature",
           "components": [
             {
               "name": "v",
@@ -3404,7 +3404,7 @@
         {
           "name": "usdNodeMarginInfo",
           "type": "tuple",
-          "internalType": "MarginInfo",
+          "internalType": "struct MarginInfo",
           "components": [
             {
               "name": "collateral",
@@ -3484,7 +3484,7 @@
         {
           "name": "commandType",
           "type": "uint8",
-          "internalType": "CommandType"
+          "internalType": "enum CommandType"
         }
       ]
     },
@@ -3987,7 +3987,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "InsuranceFundConfig",
+          "internalType": "struct InsuranceFundConfig",
           "components": [
             {
               "name": "accountId",
@@ -4019,7 +4019,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "InsuranceFundConfig",
+          "internalType": "struct InsuranceFundConfig",
           "components": [
             {
               "name": "accountId",
@@ -4043,7 +4043,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "InsuranceFundConfig",
+          "internalType": "struct InsuranceFundConfig",
           "components": [
             {
               "name": "accountId",
@@ -4066,7 +4066,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "ProtocolConfiguration.Data",
+          "internalType": "struct ProtocolConfiguration.Data",
           "components": [
             {
               "name": "oracleManagerAddress",
@@ -4097,7 +4097,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "ProtocolConfiguration.Data",
+          "internalType": "struct ProtocolConfiguration.Data",
           "components": [
             {
               "name": "oracleManagerAddress",
@@ -4131,7 +4131,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "LiquidationConfig",
+          "internalType": "struct LiquidationConfig",
           "components": [
             {
               "name": "bidKeeperFee",
@@ -4196,7 +4196,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "RiskMultipliers",
+          "internalType": "struct RiskMultipliers",
           "components": [
             {
               "name": "imMultiplier",
@@ -4267,7 +4267,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "BackstopLPConfig",
+          "internalType": "struct BackstopLPConfig",
           "components": [
             {
               "name": "accountId",
@@ -4313,7 +4313,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "LiquidationConfig",
+          "internalType": "struct LiquidationConfig",
           "components": [
             {
               "name": "bidKeeperFee",
@@ -4422,7 +4422,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "RiskMultipliers",
+          "internalType": "struct RiskMultipliers",
           "components": [
             {
               "name": "imMultiplier",
@@ -4466,7 +4466,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "BackstopLPConfig",
+          "internalType": "struct BackstopLPConfig",
           "components": [
             {
               "name": "accountId",
@@ -4506,7 +4506,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "BackstopLPConfig",
+          "internalType": "struct BackstopLPConfig",
           "components": [
             {
               "name": "accountId",
@@ -4555,7 +4555,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "LiquidationConfig",
+          "internalType": "struct LiquidationConfig",
           "components": [
             {
               "name": "bidKeeperFee",
@@ -4624,7 +4624,7 @@
         {
           "name": "config",
           "type": "tuple",
-          "internalType": "RiskMultipliers",
+          "internalType": "struct RiskMultipliers",
           "components": [
             {
               "name": "imMultiplier",
@@ -4774,7 +4774,7 @@
         {
           "name": "liquidationBid",
           "type": "tuple",
-          "internalType": "LiquidationBid",
+          "internalType": "struct LiquidationBid",
           "components": [
             {
               "name": "liquidatorAccountId",
@@ -4813,7 +4813,7 @@
         {
           "name": "output",
           "type": "tuple",
-          "internalType": "ExecuteLiquidationBidOutput",
+          "internalType": "struct ExecuteLiquidationBidOutput",
           "components": [
             {
               "name": "lmrDelta",
@@ -4823,7 +4823,7 @@
             {
               "name": "rewards",
               "type": "tuple",
-              "internalType": "LiquidationRewards",
+              "internalType": "struct LiquidationRewards",
               "components": [
                 {
                   "name": "insuranceFund",
@@ -4932,7 +4932,7 @@
         {
           "name": "data",
           "type": "tuple",
-          "internalType": "DutchLiquidationInput",
+          "internalType": "struct DutchLiquidationInput",
           "components": [
             {
               "name": "liquidatableAccountId",
@@ -4961,7 +4961,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "DutchLiquidationOutput",
+          "internalType": "struct DutchLiquidationOutput",
           "components": [
             {
               "name": "lmrDelta",
@@ -4981,7 +4981,7 @@
             {
               "name": "rewards",
               "type": "tuple",
-              "internalType": "LiquidationRewards",
+              "internalType": "struct LiquidationRewards",
               "components": [
                 {
                   "name": "insuranceFund",
@@ -5135,7 +5135,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "ExecuteTopRankedLiquidationBidOutput",
+          "internalType": "struct ExecuteTopRankedLiquidationBidOutput",
           "components": [
             {
               "name": "success",
@@ -5155,7 +5155,7 @@
             {
               "name": "executionOutput",
               "type": "tuple",
-              "internalType": "ExecuteLiquidationBidOutput",
+              "internalType": "struct ExecuteLiquidationBidOutput",
               "components": [
                 {
                   "name": "lmrDelta",
@@ -5165,7 +5165,7 @@
                 {
                   "name": "rewards",
                   "type": "tuple",
-                  "internalType": "LiquidationRewards",
+                  "internalType": "struct LiquidationRewards",
                   "components": [
                     {
                       "name": "insuranceFund",
@@ -5224,7 +5224,7 @@
         {
           "name": "liquidationBid",
           "type": "tuple",
-          "internalType": "LiquidationBid",
+          "internalType": "struct LiquidationBid",
           "components": [
             {
               "name": "liquidatorAccountId",
@@ -5267,7 +5267,7 @@
         {
           "name": "liquidationBid",
           "type": "tuple",
-          "internalType": "LiquidationBid",
+          "internalType": "struct LiquidationBid",
           "components": [
             {
               "name": "liquidatorAccountId",
@@ -5322,7 +5322,7 @@
         {
           "name": "output",
           "type": "tuple",
-          "internalType": "LiquidationBidQueueOutput",
+          "internalType": "struct LiquidationBidQueueOutput",
           "components": [
             {
               "name": "bidQueueIndex",
@@ -5337,7 +5337,7 @@
             {
               "name": "bids",
               "type": "tuple[]",
-              "internalType": "LiquidationBidQueueItem[]",
+              "internalType": "struct LiquidationBidQueueItem[]",
               "components": [
                 {
                   "name": "index",
@@ -5347,7 +5347,7 @@
                 {
                   "name": "bid",
                   "type": "tuple",
-                  "internalType": "LiquidationBid",
+                  "internalType": "struct LiquidationBid",
                   "components": [
                     {
                       "name": "liquidatorAccountId",
@@ -5405,7 +5405,7 @@
         {
           "name": "liquidationBid",
           "type": "tuple",
-          "internalType": "LiquidationBid",
+          "internalType": "struct LiquidationBid",
           "components": [
             {
               "name": "liquidatorAccountId",
@@ -5444,7 +5444,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "SubmitLiquidationBidOutput",
+          "internalType": "struct SubmitLiquidationBidOutput",
           "components": [
             {
               "name": "bidQueueIndex",
@@ -5565,7 +5565,7 @@
         {
           "name": "matchOrderFees",
           "type": "tuple",
-          "internalType": "MatchOrderFees",
+          "internalType": "struct MatchOrderFees",
           "components": [
             {
               "name": "protocolFeeCredit",
