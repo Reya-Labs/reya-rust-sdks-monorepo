@@ -1,16 +1,10 @@
 use std::env;
 
 use alloy::{
-    contract,
-    network::{EthereumSigner, TransactionBuilder},
-    node_bindings::Anvil,
-    providers::{Provider, ProviderBuilder},
-    rpc::client::WsConnect,
-    signers::wallet::LocalWallet,
-    sol, sol_types,
+    network::EthereumSigner, providers::ProviderBuilder, signers::wallet::LocalWallet, sol,
 };
 
-use alloy::primitives::{address, Address};
+use alloy::primitives::address;
 
 use eyre;
 use tokio;
@@ -28,9 +22,9 @@ sol!(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://rpc.reya.network".parse()?;
-    let privateKey = env::var("PRIVATE_KEY").unwrap();
-    println!("{privateKey}");
-    let signer: LocalWallet = privateKey.parse().unwrap();
+    let private_key = env::var("PRIVATE_KEY").unwrap();
+    println!("{private_key}");
+    let signer: LocalWallet = private_key.parse().unwrap();
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .signer(EthereumSigner::from(signer))
@@ -43,9 +37,9 @@ async fn main() -> eyre::Result<()> {
         provider,
     );
 
-    let accountOwnerAddress = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+    let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
 
-    let builder = contract.createAccount(accountOwnerAddress);
+    let builder = contract.createAccount(account_owner_address);
     let receipt = builder.send().await?.get_receipt().await?;
 
     println!("{:?}", receipt);
