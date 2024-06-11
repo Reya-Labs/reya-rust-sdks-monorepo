@@ -1,7 +1,7 @@
 use alloy::{
     network::EthereumSigner,
     //sol_types,
-    primitives::{address, Address, Bytes},
+    primitives::{address, Address, Bytes, I256, U256},
     providers::ProviderBuilder,
     //rpc::client::WsConnect,
     //signers::{k256::pkcs8::der::Encode, wallet::LocalWallet},
@@ -59,7 +59,7 @@ impl HttpProvider {
         &self,
         private_key: &String,
         account_owner_address: &Address,
-    ) -> eyre::Result<u128> {
+    ) -> eyre::Result<Option<Address>> {
         let signer: LocalWallet = private_key.parse().unwrap();
 
         // create http provider
@@ -72,11 +72,9 @@ impl HttpProvider {
         let core_proxy = CoreProxy::new(CORE_CONTRACT_ADDRESS.parse()?, provider);
         let builder = core_proxy.createAccount(account_owner_address.clone());
 
-        let account_return: CoreProxy::createAccountReturn = builder.call().await?;
+        let receipt = builder.send().await?.get_receipt().await?;
 
-        //let receipt = builder.send().await?.get_receipt().await?;
-
-        eyre::Ok(account_return.accountId)
+        eyre::Ok(receipt.contract_address)
     }
 
     pub async fn execute(
@@ -85,8 +83,8 @@ impl HttpProvider {
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
-        order_base: u128,
-        order_price_limit: u128,
+        order_base: I256,        // side(+/- = buy/sell) + volume i256
+        order_price_limit: U256, // order price u256
     ) -> eyre::Result<Option<Address>> {
         let signer: LocalWallet = private_key.parse().unwrap();
 
@@ -99,8 +97,9 @@ impl HttpProvider {
         // core create account
         let core_proxy = CoreProxy::new(CORE_CONTRACT_ADDRESS.parse()?, provider);
 
-        let order_price_limit_bytes = order_price_limit.to_ne_bytes();
-        let order_base_bytes = order_base.to_ne_bytes();
+        let order_price_limit_bytes = order_price_limit.to_le_bytes::<16>();
+        let order_base_bytes = order_base.to_le_bytes::<16>();
+
         let volume_price_bytes = vec![order_base_bytes, order_price_limit_bytes];
 
         // construct core proxy command struct
@@ -114,8 +113,6 @@ impl HttpProvider {
         };
 
         let builder = core_proxy.execute(account_id, vec![command]);
-        //let transaction_result : CoreProxy::executeReturn = builder.call().await?;
-        //transaction_result.outputs[0] ; // collateral
         let transaction_result = builder.send().await?;
         let receipt = transaction_result.get_receipt().await?;
 
@@ -149,11 +146,11 @@ async fn main() -> eyre::Result<()> {
 
     // execute order
     // todo get correct market and exchange id
-    let account_id = 0u128;
-    let market_id = 0u128;
-    let exchange_id = 0u128;
-    let order_base = 0u128;
-    let order_price_limit = 0u128;
+    let account_id = 734u128; // externaly provided by trading party
+    let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+    let exchange_id = 1u128; //1=reya exchange
+    let order_base: I256 = "1".parse().unwrap();
+    let order_price_limit: U256 = "0".parse().unwrap();
     let execution_result = http_provider
         .execute(
             &private_key,
