@@ -13,7 +13,8 @@ use eyre;
 use std::env;
 use tokio;
 use url::Url;
-use CoreProxy::new;
+
+//use CoreProxy::new;
 
 // Codegen from artifact.
 sol!(
@@ -58,7 +59,7 @@ impl HttpProvider {
         &self,
         private_key: &String,
         account_owner_address: &Address,
-    ) -> eyre::Result<Option<Address>> {
+    ) -> eyre::Result<u128> {
         let signer: LocalWallet = private_key.parse().unwrap();
 
         // create http provider
@@ -69,11 +70,13 @@ impl HttpProvider {
 
         // core create account
         let core_proxy = CoreProxy::new(CORE_CONTRACT_ADDRESS.parse()?, provider);
-
         let builder = core_proxy.createAccount(account_owner_address.clone());
-        let receipt = builder.send().await?.get_receipt().await?;
 
-        eyre::Ok(receipt.contract_address)
+        let account_return: CoreProxy::createAccountReturn = builder.call().await?;
+
+        //let receipt = builder.send().await?.get_receipt().await?;
+
+        eyre::Ok(account_return.accountId)
     }
 
     pub async fn execute(
@@ -111,6 +114,8 @@ impl HttpProvider {
         };
 
         let builder = core_proxy.execute(account_id, vec![command]);
+        //let transaction_result : CoreProxy::executeReturn = builder.call().await?;
+        //transaction_result.outputs[0] ; // collateral
         let transaction_result = builder.send().await?;
         let receipt = transaction_result.get_receipt().await?;
 
@@ -133,15 +138,15 @@ async fn main() -> eyre::Result<()> {
     let http_provider: HttpProvider = HttpProvider::new(&url);
 
     let private_key = env::var("PRIVATE_KEY").unwrap();
-    /*  let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+    let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
 
-        // create account
-        let contract_address = http_provider
-            .create_account(&private_key, &account_owner_address)
-            .await;
+    // create account
+    let account_id = http_provider
+        .create_account(&private_key, &account_owner_address)
+        .await;
 
-        println!("Created account, contract_address:{:?}", contract_address);
-    */
+    println!("Created account, account_id:{:?}", account_id);
+
     // execute order
     // todo get correct market and exchange id
     let account_id = 0u128;
