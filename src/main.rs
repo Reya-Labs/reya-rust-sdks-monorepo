@@ -13,10 +13,10 @@ use eyre;
 use std::env;
 use tokio;
 use url::Url;
+//use futures_util::{future, StreamExt};
+//use futures::task::Poll;
 
-//use CoreProxy::new;
-
-// Codegen from artifact.
+// Codegen from ABI file to interact with the contract.
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
@@ -97,8 +97,8 @@ impl HttpProvider {
         // core create account
         let core_proxy = CoreProxy::new(CORE_CONTRACT_ADDRESS.parse()?, provider);
 
-        let order_price_limit_bytes = order_price_limit.to_le_bytes::<16>();
-        let order_base_bytes = order_base.to_le_bytes::<16>();
+        let order_price_limit_bytes = order_price_limit.to_le_bytes::<32>();
+        let order_base_bytes = order_base.to_le_bytes::<32>();
 
         let volume_price_bytes = vec![order_base_bytes, order_price_limit_bytes];
 
@@ -121,11 +121,6 @@ impl HttpProvider {
             // this does not return the 'output' data from the execute call, not sure where to get it from :(
         }
         eyre::Ok(receipt.contract_address)
-
-        //else {
-        //    Option<Address>::new(address, provider)
-        //    eyre::Error(())
-        //}
     }
 }
 
