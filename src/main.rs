@@ -1,10 +1,7 @@
 use alloy::{
     network::EthereumSigner,
-    //sol_types,
     primitives::{address, Address, Bytes, I256, U256},
     providers::ProviderBuilder,
-    //rpc::client::WsConnect,
-    //signers::{k256::pkcs8::der::Encode, wallet::LocalWallet},
     signers::wallet::LocalWallet,
     sol,
 };
@@ -57,11 +54,9 @@ impl HttpProvider {
 
     pub async fn create_account(
         &self,
-        private_key: &String,
+        signer: LocalWallet,
         account_owner_address: &Address,
     ) -> eyre::Result<Option<Address>> {
-        let signer: LocalWallet = private_key.parse().unwrap();
-
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
@@ -79,15 +74,13 @@ impl HttpProvider {
 
     pub async fn execute(
         &self,
-        private_key: &String,
+        signer: LocalWallet,
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
         order_base: I256,        // side(+/- = buy/sell) + volume i256
         order_price_limit: U256, // order price u256
     ) -> eyre::Result<Option<Address>> {
-        let signer: LocalWallet = private_key.parse().unwrap();
-
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
@@ -133,33 +126,40 @@ async fn main() -> eyre::Result<()> {
     let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
 
     // create account
-    let account_id = http_provider
-        .create_account(&private_key, &account_owner_address)
-        .await;
+    {
+        let signer: LocalWallet = private_key.parse().unwrap();
+        let account_id = http_provider
+            .create_account(signer, &account_owner_address)
+            .await;
 
-    println!("Created account, account_id:{:?}", account_id);
+        println!("Created account, account_id:{:?}", account_id);
+    }
 
     // execute order
-    // todo get correct market and exchange id
-    let account_id = 734u128; // externaly provided by trading party
-    let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-    let exchange_id = 1u128; //1=reya exchange
-    let order_base: I256 = "1".parse().unwrap();
-    let order_price_limit: U256 = "0".parse().unwrap();
-    let execution_result = http_provider
-        .execute(
-            &private_key,
-            account_id,
-            market_id,
-            exchange_id,
-            order_base,
-            order_price_limit,
-        )
-        .await;
-    println!(
-        "Execute match order, contract address:{:?}",
-        execution_result
-    );
+    {
+        // todo get correct market and exchange id
+        let signer: LocalWallet = private_key.parse().unwrap();
+
+        let account_id = 734u128; // externaly provided by trading party
+        let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+        let exchange_id = 1u128; //1=reya exchange
+        let order_base: I256 = "1".parse().unwrap();
+        let order_price_limit: U256 = "0".parse().unwrap();
+        let execution_result = http_provider
+            .execute(
+                signer,
+                account_id,
+                market_id,
+                exchange_id,
+                order_base,
+                order_price_limit,
+            )
+            .await;
+        println!(
+            "Execute match order, contract address:{:?}",
+            execution_result
+        );
+    }
 
     // rusd view
     // let contract = rUSDProxy::new(
