@@ -1,7 +1,7 @@
 mod reya_network;
 use crate::reya_network::http_provider;
 use alloy::{
-    primitives::{I256, U256},
+    primitives::{address, I256, U256},
     signers::wallet::LocalWallet,
 };
 use eyre;
@@ -15,19 +15,20 @@ async fn main() -> eyre::Result<()> {
     let url = Url::parse("https://rpc.reya.network")?;
     let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
 
-    let private_key = env::var("PRIVATE_KEY").unwrap();
-    /*
-        // create account
-        {
-            let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-            let signer: LocalWallet = private_key.parse().unwrap();
-            let account_id = http_provider
-                .create_account(signer, &account_owner_address)
-                .await;
+    let private_key = env::var("PRIVATE_KEY").unwrap().to_lowercase();
+    //println!("{:?}", private_key);
+    /**/
+    // create account
+    {
+        let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+        let signer: LocalWallet = private_key.parse().unwrap();
+        let account_id = http_provider
+            .create_account(signer, &account_owner_address)
+            .await;
 
-            println!("Created account, account_id:{:?}", account_id);
-        }
-    */
+        println!("Created account, account_id:{:?}", account_id);
+    }
+    /**/
     // execute order
     {
         let signer: LocalWallet = private_key.parse().unwrap();
