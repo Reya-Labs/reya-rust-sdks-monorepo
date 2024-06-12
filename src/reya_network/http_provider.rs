@@ -38,17 +38,54 @@ pub struct HttpProvider {
  * HTTP Provider, implements several method to the CoreProxy
  * - create_account, create a new account
  * - execute, insert an order to match the LP limit order. Currently only a market order
+ * - get_account_owner, gets the owners account
  */
 #[allow(dead_code)]
 impl HttpProvider {
+    #[allow(rustdoc::bare_urls)]
+    /// Construct new HTTP_provider
+    /// First parameter is the url
     ///
+    /// # Examples
+    /// '''
+    /// use crate::reya_network::http_provider;
+    ///
+    /// let url = Url::parse("https://rpc.reya.network");
+    ///
+    //  let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
+    /// '''
     pub fn new(http_url: &Url) -> HttpProvider {
         HttpProvider {
             url: http_url.clone(),
         }
     }
 
+    /// CreateAccount, creates an account on the reya network and returns the transaction hash on success
     ///
+    /// Needs the following parameters:
+    ///
+    /// 1: the signer
+    ///
+    /// 2: the account owner address
+    ///
+    /// # Examples
+    /// '''
+    /// use crate::reya_network::http_provider;
+    ///
+    /// use alloy::{
+    ///    primitives::{I256, U256},
+    ///
+    ///    signers::wallet::LocalWallet,
+    /// };
+    ///
+    /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
+    ///
+    /// let signer: LocalWallet = private_key.parse().unwrap();
+    ///
+    /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
+    ///
+    /// println!("Created account, tx hash:{:?}", transaction_hash);
+    ///  '''
     pub async fn create_account(
         &self,
         signer: LocalWallet,
@@ -72,7 +109,50 @@ impl HttpProvider {
         eyre::Ok(receipt.transaction_hash)
     }
 
+    /// Execute, executes a market order on the reya network and returns the transaction hash on success
     ///
+    /// Needs the following parameters:
+    ///
+    /// 1: the signer
+    ///
+    /// 2: account id
+    ///
+    /// 3: market_id, instrument symbol id for the reya network e.g.: 1=eth/rUSD, 2=btc/rUSD
+    ///
+    /// 4: exchange_id, 1=reya exchange
+    ///
+    /// 5: order base, side(+/- = buy/sell) + volume i256 * 10^18
+    ///
+    /// 6: order price, price * 10^18
+    ///
+    /// # Examples
+    /// '''
+    /// use crate::reya_network::http_provider;
+    ///
+    /// use alloy::{
+    ///    primitives::{I256, U256},
+    ///
+    ///    signers::wallet::LocalWallet,
+    /// };
+    ///
+    /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
+    ///
+    /// let signer: LocalWallet = private_key.parse().unwrap();
+    ///
+    /// let transaction_hash = http_provider
+    ///
+    /// let market_id = 1u128;
+    ///
+    /// let exchange_id = 1u128;
+    ///
+    /// let order_base: I256 = "1".parse().unwrap();
+    ///
+    /// let order_price_limit: U256 = "1".parse().unwrap();
+    ///
+    /// let transaction_hash = http_provider.execute(signer, account_id, market_id, exchange_id, order_base, order_price_limit).await;
+    ///
+    /// println!("Execute match order, tx hash:{:?}", transaction_hash);
+    ///  '''
     pub async fn execute(
         &self,
         signer: LocalWallet,
@@ -109,8 +189,6 @@ impl HttpProvider {
             Bytes::from(volume_price_bytes.abi_encode())
         );
 
-        let v: Vec<[u8; 64]>;
-
         let command = CoreProxy::Command {
             commandType: command_type as u8,                      //
             inputs: Bytes::from(volume_price_bytes.abi_encode()), //
@@ -129,6 +207,22 @@ impl HttpProvider {
         eyre::Ok(receipt.transaction_hash)
     }
 
+    /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
+    ///
+    /// Needs the following parameters:
+    ///
+    /// 1: the signer
+    ///
+    /// 2: account id
+    ///
+    /// # Examples
+    /// '''
+    ///  let signer: LocalWallet = private_key.parse().unwrap();
+    ///
+    ///   let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
+    ///
+    ///  println!("get account owner address, tx hash:{:?}", transaction_hash);
+    ///  '''
     pub async fn get_account_owner(
         &self,
         signer: LocalWallet,
