@@ -41,12 +41,14 @@ pub struct HttpProvider {
  */
 #[allow(dead_code)]
 impl HttpProvider {
+    ///
     pub fn new(http_url: &Url) -> HttpProvider {
         HttpProvider {
             url: http_url.clone(),
         }
     }
 
+    ///
     pub async fn create_account(
         &self,
         signer: LocalWallet,
@@ -66,6 +68,7 @@ impl HttpProvider {
         eyre::Ok(receipt.contract_address)
     }
 
+    ///
     pub async fn execute(
         &self,
         signer: LocalWallet,
