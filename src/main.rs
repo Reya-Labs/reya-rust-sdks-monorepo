@@ -16,29 +16,37 @@ async fn main() -> eyre::Result<()> {
     let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
 
     let private_key = env::var("PRIVATE_KEY").unwrap().to_lowercase();
-    //println!("{:?}", private_key);
-    /**/
+    let account_id = 734u128; // externaly provided by trading party
+                              //println!("{:?}", private_key);
+                              /**/
     // create account
-    {
-        let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-        let signer: LocalWallet = private_key.parse().unwrap();
-        let account_id = http_provider
-            .create_account(signer, &account_owner_address)
-            .await;
+    /*{
+            let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+            let signer: LocalWallet = private_key.parse().unwrap();
+            let transaction_hash = http_provider
+                .create_account(signer, &account_owner_address)
+                .await;
 
-        println!("Created account, account_id:{:?}", account_id);
+            println!("Created account, tx hash:{:?}", transaction_hash);
+        }
+    */
+    // get account owner
+    {
+        let signer: LocalWallet = private_key.parse().unwrap();
+        let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
+        println!("get account owner address, tx hash:{:?}", transaction_hash);
     }
+
     /**/
     // execute order
     {
         let signer: LocalWallet = private_key.parse().unwrap();
 
-        let account_id = 734u128; // externaly provided by trading party
         let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
         let exchange_id = 1u128; //1=reya exchange
         let order_base: I256 = "1".parse().unwrap();
-        let order_price_limit: U256 = "0".parse().unwrap();
-        let execution_result = http_provider
+        let order_price_limit: U256 = "1".parse().unwrap();
+        let transaction_hash = http_provider
             .execute(
                 signer,
                 account_id,
@@ -48,28 +56,8 @@ async fn main() -> eyre::Result<()> {
                 order_price_limit,
             )
             .await;
-        println!(
-            "Execute match order, contract address:{:?}",
-            execution_result
-        );
+        println!("Execute match order, tx hash:{:?}", transaction_hash);
     }
-
-    // rusd view
-    // let contract = rUSDProxy::new(
-    //"0xa9F32a851B1800742e47725DA54a09A7Ef2556A3".parse()?,
-    //     provider,
-    // );
-
-    // let rUSDProxy::totalSupplyReturn { _0 } = contract.totalSupply().call().await?;
-
-    // println!("RUSD total supply is {_0}");
-
-    // core view
-    // let contract = coreProxy::new(
-    //     "0xA763B6a5E09378434406C003daE6487FbbDc1a80".parse()?,
-    //     provider,
-    // );
-    // let result = contract.getProtocolConfiguration().call().await?;
 
     Ok(())
 }
