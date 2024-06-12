@@ -20,7 +20,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PRIVATE_KEY": "a0808895f1bc8be27d7a9392a4a05e255271b99a749107f596f35c196556af22"
+            }
         },
         {
             "type": "lldb",

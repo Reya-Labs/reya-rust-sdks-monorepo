@@ -1,7 +1,7 @@
 use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
-    primitives::{Address, Bytes, I256, U256},
+    primitives::{Address, Bytes, B256, I256, U256},
     providers::ProviderBuilder,
     signers::wallet::LocalWallet,
     sol,
@@ -53,7 +53,8 @@ impl HttpProvider {
         &self,
         signer: LocalWallet,
         account_owner_address: &Address,
-    ) -> eyre::Result<Option<Address>> {
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
@@ -65,7 +66,10 @@ impl HttpProvider {
         let builder = core_proxy.createAccount(account_owner_address.clone());
 
         let receipt = builder.send().await?.get_receipt().await?;
-        eyre::Ok(receipt.contract_address)
+        if receipt.inner.is_success() {
+            println!("Create account, Transaction receipt:{:?}", receipt);
+        }
+        eyre::Ok(receipt.transaction_hash)
     }
 
     ///
@@ -77,17 +81,18 @@ impl HttpProvider {
         exchange_id: u128,
         order_base: I256,        // side(+/- = buy/sell) + volume i256
         order_price_limit: U256, // order price u256
-    ) -> eyre::Result<Option<Address>> {
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
+        println!(
+            "Executing order, account={:?}, market={:?}, exchange:={:?}, base:{:?}, price={:?}",
+            account_id, market_id, exchange_id, order_base, order_price_limit
+        );
+
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .signer(EthereumSigner::from(signer))
             .on_http(self.url.clone());
-
-        println!(
-            "Executing order, account={:?}, market={:?}, exchange:={:?}, base:{:?}, price={:?}",
-            account_id, market_id, exchange_id, order_base, order_price_limit
-        );
 
         // core create account
         let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
@@ -104,6 +109,8 @@ impl HttpProvider {
             Bytes::from(volume_price_bytes.abi_encode())
         );
 
+        let v: Vec<[u8; 64]>;
+
         let command = CoreProxy::Command {
             commandType: command_type as u8,                      //
             inputs: Bytes::from(volume_price_bytes.abi_encode()), //
@@ -116,9 +123,35 @@ impl HttpProvider {
         let receipt = transaction_result.get_receipt().await?;
 
         if receipt.inner.is_success() {
-            println!("Execute logs:{:?}", receipt.inner.logs());
+            println!("Execute receipt:{:?}", receipt);
         }
 
-        eyre::Ok(receipt.contract_address)
+        eyre::Ok(receipt.transaction_hash)
+    }
+
+    pub async fn get_account_owner(
+        &self,
+        signer: LocalWallet,
+        account_id: u128,
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .signer(EthereumSigner::from(signer))
+            .on_http(self.url.clone());
+
+        // core create account
+        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+        let builder = core_proxy.getAccountOwner(account_id);
+        let transaction_result = builder.send().await?;
+        //
+        let receipt = transaction_result.get_receipt().await?;
+
+        if receipt.inner.is_success() {
+            //println!("Get account owner address receipt:{:?}", receipt);
+        }
+
+        eyre::Ok(receipt.transaction_hash)
     }
 }
