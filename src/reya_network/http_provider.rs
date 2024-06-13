@@ -223,29 +223,20 @@ impl HttpProvider {
     ///
     ///  println!("get account owner address, tx hash:{:?}", transaction_hash);
     ///  '''
-    pub async fn get_account_owner(
-        &self,
-        signer: LocalWallet,
-        account_id: u128,
-    ) -> eyre::Result<B256> // return the transaction hash
+    pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
     {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .signer(EthereumSigner::from(signer))
             .on_http(self.url.clone());
 
         // core create account
         let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
-        let builder = core_proxy.getAccountOwner(account_id);
-        let transaction_result = builder.send().await?;
-        //
-        let receipt = transaction_result.get_receipt().await?;
 
-        if receipt.inner.is_success() {
-            //println!("Get account owner address receipt:{:?}", receipt);
-        }
+        // Call the contract, retrieve the account owner information.
+        let CoreProxy::getAccountOwnerReturn { _0 } =
+            core_proxy.getAccountOwner(account_id).call().await?;
 
-        eyre::Ok(receipt.transaction_hash)
+        eyre::Ok(_0)
     }
 }

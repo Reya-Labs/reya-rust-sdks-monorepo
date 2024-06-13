@@ -35,34 +35,34 @@ async fn main() -> eyre::Result<()> {
             println!("Created account, tx hash:{:?}", transaction_hash);
         }
     */
+
     // get account owner
     {
-        let signer: LocalWallet = private_key.parse().unwrap();
-        let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
-        println!("get account owner address, tx hash:{:?}", transaction_hash);
+        let account_owner_address = http_provider.get_account_owner(account_id).await;
+        println!("get account owner address,:{:?}", account_owner_address);
     }
 
     /**/
     // execute order
-    {
-        let signer: LocalWallet = private_key.parse().unwrap();
+    // {
+    //     let signer: LocalWallet = private_key.parse().unwrap();
 
-        let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-        let exchange_id = 1u128; //1=reya exchange
-        let order_base: I256 = "1".parse().unwrap();
-        let order_price_limit: U256 = "1".parse().unwrap();
-        let transaction_hash = http_provider
-            .execute(
-                signer,
-                account_id,
-                market_id,
-                exchange_id,
-                order_base,
-                order_price_limit,
-            )
-            .await;
-        println!("Execute match order, tx hash:{:?}", transaction_hash);
-    }
+    //     let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+    //     let exchange_id = 1u128; //1=reya exchange
+    //     let order_base: I256 = "1".parse().unwrap();
+    //     let order_price_limit: U256 = "1".parse().unwrap();
+    //     let transaction_hash = http_provider
+    //         .execute(
+    //             signer,
+    //             account_id,
+    //             market_id,
+    //             exchange_id,
+    //             order_base,
+    //             order_price_limit,
+    //         )
+    //         .await;
+    //     println!("Execute match order, tx hash:{:?}", transaction_hash);
+    // }
 
     Ok(())
 }
