@@ -4,6 +4,7 @@ use alloy::{
     primitives::{address, I256, U256},
     signers::wallet::LocalWallet,
 };
+use dotenv::dotenv;
 use eyre;
 use std::env;
 use tokio;
@@ -12,10 +13,14 @@ use url::Url;
 #[tokio::main]
 #[allow(dead_code)]
 async fn main() -> eyre::Result<()> {
+    dotenv().ok();
+
     let url = Url::parse("https://rpc.reya.network")?;
     let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
 
-    let private_key = env::var("PRIVATE_KEY").unwrap().to_lowercase();
+    let private_key = env::var("PRIVATE_KEY")
+        .expect("Private key must be set")
+        .to_lowercase();
     let account_id = 734u128; // externaly provided by trading party
                               //println!("{:?}", private_key);
                               /**/
