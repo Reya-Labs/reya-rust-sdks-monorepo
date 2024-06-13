@@ -2846,7 +2846,9 @@ dependencies = [
  "eyre",
  "futures",
  "futures-util",
+ "hex",
  "tokio",
+ "url",
 ]
 
 [[package]]

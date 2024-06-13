@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'reya-rust'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=reya-rust",
+                    "--package=reya-rust"
+                ],
+                "filter": {
+                    "name": "reya-rust",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PRIVATE_KEY": "a0808895f1bc8be27d7a9392a4a05e255271b99a749107f596f35c196556af22"
+            }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'reya-rust'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=reya-rust",
+                    "--package=reya-rust"
+                ],
+                "filter": {
+                    "name": "reya-rust",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
