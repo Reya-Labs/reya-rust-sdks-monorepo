@@ -1,12 +1,12 @@
 use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
-    primitives::{Address, Bytes, B256, I256, U256},
+    primitives::{Address, Bytes, B256, I256, U128, U256},
     providers::ProviderBuilder,
     signers::wallet::LocalWallet,
     sol,
 };
-use alloy_sol_types::SolValue;
+use alloy_sol_types::{sol_data::*, SolType, SolValue};
 use eyre;
 
 use url::Url;
@@ -160,8 +160,8 @@ impl HttpProvider {
         market_id: u128,
         exchange_id: u128,
         order_base: I256,        // side(+/- = buy/sell) + volume i256
-        order_price_limit: U256, // order price u256
-    ) -> eyre::Result<B256> // return the transaction hash
+        order_price_limit: U256, // order price limit u256
+    ) -> eyre::Result<&str> // return the transaction hash
     {
         println!(
             "Executing order, account={:?}, market={:?}, exchange:={:?}, base:{:?}, price={:?}",
@@ -174,26 +174,32 @@ impl HttpProvider {
             .signer(EthereumSigner::from(signer))
             .on_http(self.url.clone());
 
-        // core create account
         let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
 
-        let order_price_limit_bytes = order_price_limit.to_le_bytes::<32>();
-        let order_base_bytes = order_base.to_le_bytes::<32>();
-        let volume_price_bytes = vec![order_base_bytes, order_price_limit_bytes];
+        // encode order base & order price limit
+        // solTypes are used to transform Rust into ABI blobs, and back.
+        type BasePriceSolType = (I256, U256);
+        let base_price_to_encode = (order_base, order_price_limit);
+        let base_price_encoded: Vec<u8> = BasePriceSolType::abi_encode(&base_price_to_encode);
+        let base_price_decoded: (I256, U256) =
+            BasePriceSolType::abi_decode(&base_price_encoded, true)?;
+        assert_eq!(base_price_to_encode, base_price_decoded);
+
+        // generate encoded core command input
+        type BasePriceCounterpartiesSolType = (Vec<u128>, Vec<u8>);
+        let counterparty_account_ids = vec![2u128];
+        let base_price_counterparties_to_encode = (counterparty_account_ids, base_price_encoded);
+        let base_price_counterparties_encoded =
+            BasePriceCounterpartiesSolType::abi_encode(&base_price_counterparties_to_encode);
 
         // construct core proxy command struct
         let command_type = data_types::CommandType::MatchOrder;
 
-        println!(
-            "input bytes:{:?}",
-            Bytes::from(volume_price_bytes.abi_encode())
-        );
-
         let command = CoreProxy::Command {
-            commandType: command_type as u8,                      //
-            inputs: Bytes::from(volume_price_bytes.abi_encode()), //
-            marketId: market_id,                                  //
-            exchangeId: exchange_id,                              //
+            commandType: command_type as u8,
+            inputs: base_price_counterparties_encoded.into(),
+            marketId: market_id,
+            exchangeId: exchange_id,
         };
 
         let builder = core_proxy.execute(account_id, vec![command]);
@@ -204,7 +210,9 @@ impl HttpProvider {
             println!("Execute receipt:{:?}", receipt);
         }
 
-        eyre::Ok(receipt.transaction_hash)
+        println!("{:?}", receipt);
+
+        eyre::Ok("Done")
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
