@@ -1,8 +1,9 @@
 use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
-    primitives::{Address, Bytes, B256, I256, U128, U256},
-    providers::ProviderBuilder,
+    primitives::{address, Address, Bytes, B256, I256, U128, U256},
+    providers::{ext::TraceApi, ProviderBuilder},
+    rpc::types::{trace::parity::TraceType, TransactionRequest},
     signers::wallet::LocalWallet,
     sol,
 };
@@ -202,15 +203,19 @@ impl HttpProvider {
             exchangeId: exchange_id,
         };
 
-        let builder = core_proxy.execute(account_id, vec![command]);
-        let transaction_result = builder.send().await?;
-        let receipt = transaction_result.get_receipt().await?;
+        let execute_call = core_proxy.execute(account_id, vec![command]);
+        let calldata = execute_call.calldata().to_owned();
+        // todo: clean up
+        let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+        let tx = TransactionRequest::default()
+            .from(account_owner_address)
+            .to(data_types::CORE_CONTRACT_ADDRESS.parse()?)
+            .input(calldata.into());
 
-        if receipt.inner.is_success() {
-            println!("Execute receipt:{:?}", receipt);
-        }
-
-        println!("{:?}", receipt);
+        // // Trace the transaction on top of the latest block.
+        let trace_type = [TraceType::Trace];
+        let result = provider.trace_call(&tx, &trace_type).await?;
+        println!("{:?}", result.trace);
 
         eyre::Ok("Done")
     }
