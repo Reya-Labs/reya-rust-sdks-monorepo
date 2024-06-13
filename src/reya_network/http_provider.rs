@@ -184,12 +184,12 @@ impl HttpProvider {
 
         // generate encoded core command input
 
-        let base_price_encoded = (order_base, order_price_limit).abi_encode();
+        let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
 
         let counterparty_account_ids: Vec<u128> = vec![2u128];
 
         let base_price_counterparties_encoded =
-            (counterparty_account_ids, base_price_encoded).abi_encode();
+            (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
         // construct core proxy command struct
         let command_type = data_types::CommandType::MatchOrder;
@@ -201,9 +201,18 @@ impl HttpProvider {
             exchangeId: exchange_id,
         };
 
-        let execute_call = core_proxy.execute(account_id, vec![command]);
-        let calldata = execute_call.calldata().to_owned();
-        println!("{:?}", calldata);
+        let builder = core_proxy.execute(account_id, vec![command]);
+        let transaction_result = builder.send().await?;
+        let receipt = transaction_result.get_receipt().await?;
+        if receipt.inner.is_success() {
+            println!("Execute receipt:{:?}", receipt);
+        }
+
+        println!("{:?}", receipt);
+
+        // let execute_call = core_proxy.execute(account_id, vec![command]);
+        // let calldata = execute_call.calldata().to_owned();
+        // println!("{:?}", calldata);
 
         eyre::Ok("Done")
     }
