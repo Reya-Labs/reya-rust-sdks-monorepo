@@ -29,6 +29,9 @@ alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features
     "signer-wallet",
     "signer-yubihsm",
     "signers",
+    "transport-http",
+    "transport-ws",
+    "transport-ipc"
 ] }
 
 alloy-core = { git = "https://github.com/alloy-rs/core", version = "0.7.2"}
@@ -37,13 +40,22 @@ alloy-json-abi = { version = "0.7.2", default-features = false }
 alloy-primitives = { version = "0.7.2", default-features = false }
 alloy-sol-types = { version = "0.7.2", default-features = false }
 
+
+# URL 
+url = "2.5.0"
+
+# hex
+hex = "0.4.3"
+
 # async
 tokio = "1"
-# misc
-eyre = "0.6.12"
+
+# futures
 futures = "0.3"
 futures-util = "0.3"
 
+# misc
+eyre = "0.6.12"
 
 [workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.

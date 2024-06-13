@@ -1,66 +1,63 @@
-use std::env;
-
+mod reya_network;
+use crate::reya_network::http_provider;
 use alloy::{
-    network::EthereumSigner, providers::ProviderBuilder, signers::wallet::LocalWallet, sol,
+    primitives::{address, I256, U256},
+    signers::wallet::LocalWallet,
 };
-
-use alloy::primitives::address;
-
 use eyre;
+use std::env;
 use tokio;
-//use futures_util::{future, StreamExt};
-//use futures::task::Poll;
-
-// Codegen from ABI file to interact with the contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    CoreProxy,
-    "transactions/abi/CoreProxy.json"
-);
+use url::Url;
 
 #[tokio::main]
+#[allow(dead_code)]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://rpc.reya.network".parse()?;
-    let private_key = env::var("PRIVATE_KEY").unwrap();
-    println!("{private_key}");
-    let signer: LocalWallet = private_key.parse().unwrap();
-    let provider = ProviderBuilder::new()
-        .with_recommended_fillers()
-        .signer(EthereumSigner::from(signer))
-        .on_http(rpc_url);
+    let url = Url::parse("https://rpc.reya.network")?;
+    let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
 
-    // core create account
+    let private_key = env::var("PRIVATE_KEY").unwrap().to_lowercase();
+    let account_id = 734u128; // externaly provided by trading party
+                              //println!("{:?}", private_key);
+                              /**/
+    // create account
+    /*{
+            let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+            let signer: LocalWallet = private_key.parse().unwrap();
+            let transaction_hash = http_provider
+                .create_account(signer, &account_owner_address)
+                .await;
 
-    let contract = CoreProxy::new(
-        "0xA763B6a5E09378434406C003daE6487FbbDc1a80".parse()?,
-        provider,
-    );
+            println!("Created account, tx hash:{:?}", transaction_hash);
+        }
+    */
+    // get account owner
+    {
+        let signer: LocalWallet = private_key.parse().unwrap();
+        let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
+        println!("get account owner address, tx hash:{:?}", transaction_hash);
+    }
 
-    let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
+    /**/
+    // execute order
+    {
+        let signer: LocalWallet = private_key.parse().unwrap();
 
-    let builder = contract.createAccount(account_owner_address);
-    let receipt = builder.send().await?.get_receipt().await?;
+        let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+        let exchange_id = 1u128; //1=reya exchange
+        let order_base: I256 = "1".parse().unwrap();
+        let order_price_limit: U256 = "1".parse().unwrap();
+        let transaction_hash = http_provider
+            .execute(
+                signer,
+                account_id,
+                market_id,
+                exchange_id,
+                order_base,
+                order_price_limit,
+            )
+            .await;
+        println!("Execute match order, tx hash:{:?}", transaction_hash);
+    }
 
-    println!("{:?}", receipt);
-
-    // rusd view
-
-    // let contract = rUSDProxy::new(
-    //     "0xa9F32a851B1800742e47725DA54a09A7Ef2556A3".parse()?,
-    //     provider,
-    // );
-
-    // let rUSDProxy::totalSupplyReturn { _0 } = contract.totalSupply().call().await?;
-
-    // println!("RUSD total supply is {_0}");
-
-    // core view
-    // let contract = coreProxy::new(
-    //     "0xA763B6a5E09378434406C003daE6487FbbDc1a80".parse()?,
-    //     provider,
-    // );
-    // let result = contract.getProtocolConfiguration().call().await?;
-
-    eyre::Ok(())
+    Ok(())
 }
