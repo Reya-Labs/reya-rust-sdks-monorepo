@@ -1,13 +1,17 @@
 use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
-    primitives::{address, Address, Bytes, B256, I256, U128, U256},
-    providers::{ext::TraceApi, ProviderBuilder},
-    rpc::types::{trace::parity::TraceType, TransactionRequest},
+    primitives::{address, Address, Bytes, B256, I256, U128, U256, U8},
+    providers::{
+        ext::{AnvilApi, TraceApi},
+        Provider, ProviderBuilder,
+    },
+    rpc::types::{eth::TransactionRequest, trace::parity::TraceType},
     signers::wallet::LocalWallet,
     sol,
 };
 use alloy_sol_types::{sol_data::*, SolType, SolValue};
+
 use eyre;
 
 use url::Url;
@@ -175,47 +179,31 @@ impl HttpProvider {
             .signer(EthereumSigner::from(signer))
             .on_http(self.url.clone());
 
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
-
-        // encode order base & order price limit
-        // solTypes are used to transform Rust into ABI blobs, and back.
-        type BasePriceSolType = (I256, U256);
-        let base_price_to_encode = (order_base, order_price_limit);
-        let base_price_encoded: Vec<u8> = BasePriceSolType::abi_encode(&base_price_to_encode);
-        let base_price_decoded: (I256, U256) =
-            BasePriceSolType::abi_decode(&base_price_encoded, true)?;
-        assert_eq!(base_price_to_encode, base_price_decoded);
+        let core_proxy =
+            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
 
         // generate encoded core command input
-        type BasePriceCounterpartiesSolType = (Vec<u128>, Vec<u8>);
-        let counterparty_account_ids = vec![2u128];
-        let base_price_counterparties_to_encode = (counterparty_account_ids, base_price_encoded);
+
+        let base_price_encoded = (order_base, order_price_limit).abi_encode();
+
+        let counterparty_account_ids: Vec<u128> = vec![2u128];
+
         let base_price_counterparties_encoded =
-            BasePriceCounterpartiesSolType::abi_encode(&base_price_counterparties_to_encode);
+            (counterparty_account_ids, base_price_encoded).abi_encode();
 
         // construct core proxy command struct
         let command_type = data_types::CommandType::MatchOrder;
 
         let command = CoreProxy::Command {
             commandType: command_type as u8,
-            inputs: base_price_counterparties_encoded.into(),
+            inputs: Bytes::from(base_price_counterparties_encoded),
             marketId: market_id,
             exchangeId: exchange_id,
         };
 
         let execute_call = core_proxy.execute(account_id, vec![command]);
         let calldata = execute_call.calldata().to_owned();
-        // todo: clean up
-        let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-        let tx = TransactionRequest::default()
-            .from(account_owner_address)
-            .to(data_types::CORE_CONTRACT_ADDRESS.parse()?)
-            .input(calldata.into());
-
-        // // Trace the transaction on top of the latest block.
-        let trace_type = [TraceType::Trace];
-        let result = provider.trace_call(&tx, &trace_type).await?;
-        println!("{:?}", result.trace);
+        println!("{:?}", calldata);
 
         eyre::Ok("Done")
     }
