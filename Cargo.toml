@@ -57,6 +57,9 @@ futures-util = "0.3"
 # misc
 eyre = "0.6.12"
 
+# env
+dotenv = "0.15.0"
+
 [workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.
 # By default, nursery lints are allowed. Some of the lints below have made good
