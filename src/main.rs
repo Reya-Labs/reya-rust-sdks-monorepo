@@ -44,25 +44,25 @@ async fn main() -> eyre::Result<()> {
 
     /**/
     // execute order
-    // {
-    //     let signer: LocalWallet = private_key.parse().unwrap();
+    {
+        let signer: LocalWallet = private_key.parse().unwrap();
 
-    //     let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-    //     let exchange_id = 1u128; //1=reya exchange
-    //     let order_base: I256 = "1".parse().unwrap();
-    //     let order_price_limit: U256 = "1".parse().unwrap();
-    //     let transaction_hash = http_provider
-    //         .execute(
-    //             signer,
-    //             account_id,
-    //             market_id,
-    //             exchange_id,
-    //             order_base,
-    //             order_price_limit,
-    //         )
-    //         .await;
-    //     println!("Execute match order, tx hash:{:?}", transaction_hash);
-    // }
+        let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+        let exchange_id = 1u128; //1=reya exchange
+        let order_base: I256 = "35000000000000000".parse().unwrap(); // 0.035 eth
+        let order_price_limit: U256 = "40000000000000000000000".parse().unwrap(); // 4000 rusd
+        let transaction_hash = http_provider
+            .execute(
+                signer,
+                account_id,
+                market_id,
+                exchange_id,
+                order_base,
+                order_price_limit,
+            )
+            .await;
+        println!("Execute match order, tx hash:{:?}", transaction_hash);
+    }
 
     Ok(())
 }
