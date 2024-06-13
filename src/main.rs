@@ -21,9 +21,9 @@ async fn main() -> eyre::Result<()> {
     let private_key = env::var("PRIVATE_KEY")
         .expect("Private key must be set")
         .to_lowercase();
-    let account_id = 734u128; // externaly provided by trading party
-                              //println!("{:?}", private_key);
-                              /**/
+    let account_id = 54u128; // externaly provided by trading party
+                             //println!("{:?}", private_key);
+                             /**/
     // create account
     /*{
             let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
@@ -50,7 +50,7 @@ async fn main() -> eyre::Result<()> {
         let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
         let exchange_id = 1u128; //1=reya exchange
         let order_base: I256 = "35000000000000000".parse().unwrap(); // 0.035 eth
-        let order_price_limit: U256 = "40000000000000000000000".parse().unwrap(); // 4000 rusd
+        let order_price_limit: U256 = "4000000000000000000000".parse().unwrap(); // 4000 rusd
         let transaction_hash = http_provider
             .execute(
                 signer,
