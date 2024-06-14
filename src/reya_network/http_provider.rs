@@ -109,21 +109,21 @@ impl HttpProvider {
         eyre::Ok(receipt.transaction_hash)
     }
 
-    /// Execute, executes a market order on the reya network and returns the transaction hash on success
+    /// Execute, executes a market order against passive lp pool on the reya network and returns the transaction hash on success
     ///
     /// Needs the following parameters:
     ///
-    /// 1: the signer
+    /// 1: signer,
     ///
-    /// 2: account id
+    /// 2: account_id, the account id which identifies the margin account used to collateralise the derivative order
     ///
     /// 3: market_id, instrument symbol id for the reya network e.g.: 1=eth/rUSD, 2=btc/rUSD
     ///
     /// 4: exchange_id, 1=reya exchange
     ///
-    /// 5: order base, side(+/- = buy/sell) + volume i256 * 10^18
+    /// 5: order_base, trade size in base token terms (e.g. eth for eth/rusd market) in WAD terms (scaled to 18 decimals) where sign determines direction
     ///
-    /// 6: order price, price * 10^18
+    /// 6: order_price_limit, if the order price limit is breached at the time of executing the order, it will get reverted on-chain
     ///
     /// # Examples
     /// '''
@@ -145,9 +145,9 @@ impl HttpProvider {
     ///
     /// let exchange_id = 1u128;
     ///
-    /// let order_base: I256 = "1".parse().unwrap();
+    /// let order_base: I256 = "+35000000000000000".parse().unwrap();
     ///
-    /// let order_price_limit: U256 = "1".parse().unwrap();
+    /// let order_price_limit: U256 = "4000000000000000000000".parse().unwrap();
     ///
     /// let transaction_hash = http_provider.execute(signer, account_id, market_id, exchange_id, order_base, order_price_limit).await;
     ///
