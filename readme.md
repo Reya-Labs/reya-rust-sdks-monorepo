@@ -1,6 +1,6 @@
 # Example Reya Rust Trading App
 
-This repository contains a Rust application that interacts with the Reya network in order to execute a trade against the passive lp pool.
+This repository contains a Rust application that interacts directly with the reya network rpc in order to execute a trade against the passive lp pool.
 
 ## Dependencies
 
