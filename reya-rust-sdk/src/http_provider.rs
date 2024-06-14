@@ -1,4 +1,3 @@
-use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -7,6 +6,7 @@ use alloy::{
     sol,
 };
 use alloy_sol_types::SolValue;
+use crate::data_types;
 use eyre;
 use tracing::{debug, trace}; //, error, info, span, warn, Level};
 use url::Url;
@@ -16,14 +16,14 @@ sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     CoreProxy,
-    "transactions/abi/CoreProxy.json"
+    "./transactions/abi/CoreProxy.json"
 );
 
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     rUSDProxy,
-    "transactions/abi/rUsdProxy.json"
+    "./transactions/abi/rUsdProxy.json"
 );
 
 /**
