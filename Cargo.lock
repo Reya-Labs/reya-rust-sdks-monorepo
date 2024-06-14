@@ -2863,6 +2863,21 @@ name = "reya-rust"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "dotenv",
+ "eyre",
+ "log",
+ "reya-rust-sdk",
+ "simple_logger",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "reya-rust-sdk"
+version = "0.1.0"
+dependencies = [
+ "alloy",
  "alloy-core 0.7.5 (git+https://github.com/alloy-rs/core)",
  "alloy-dyn-abi",
  "alloy-json-abi",
@@ -2871,8 +2886,6 @@ dependencies = [
  "dotenv",
  "eyre",
  "hex",
- "log",
- "simple_logger",
  "tokio",
  "tracing",
  "url",

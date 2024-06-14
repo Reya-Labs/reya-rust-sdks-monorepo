@@ -1,11 +1,10 @@
-mod reya_network;
-use crate::reya_network::http_provider;
 use alloy::{
     primitives::{I256, U256},
     signers::wallet::LocalWallet,
 };
 use dotenv::dotenv;
 use eyre;
+use reya_rust_sdk::http_provider;
 use simple_logger;
 use std::env;
 use tokio;

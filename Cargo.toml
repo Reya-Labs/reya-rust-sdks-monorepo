@@ -4,55 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features = [
-    "consensus",
-    "contract",
-    "eips",
-    "kzg",
-    "network",
-    "node-bindings",
-    "provider-http",
-    "provider-ipc",
-    "provider-ws",
-    "providers",
-    "rpc-client-ipc",
-    "rpc-client-ws",
-    "rpc-client",
-    "rpc-types-eth",
-    "rpc-types-trace",
-    "rpc-types",
-    "signer-aws",
-    "signer-keystore",
-    "signer-ledger",
-    "signer-mnemonic",
-    "signer-trezor",
-    "signer-wallet",
-    "signer-yubihsm",
-    "signers",
-    "transport-http",
-    "transport-ws",
-    "transport-ipc"
-] }
+reya-rust-sdk = { path = "./reya-rust-sdk" } # from a path in the local filesystem
 
-alloy-core = { git = "https://github.com/alloy-rs/core", version = "0.7.2"}
-alloy-dyn-abi = { version = "0.7.2", default-features = false }
-alloy-json-abi = { version = "0.7.2", default-features = false }
-alloy-primitives = { version = "0.7.2", default-features = false }
-alloy-sol-types = { version = "0.7.2", default-features = false }
-
+alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0"}
 
 # URL 
 url = "2.5.0"
 
 # hex
-hex = "0.4.3"
+#hex = "0.4.3"
 
 # async
 tokio = "1"
 
-# futures
-#futures = "0.3"
-#futures-util = "0.3"
 
 # misc
 eyre = "0.6.12"
@@ -66,6 +30,9 @@ tracing = "0.1.40"
 # log, define only in root cargo.toml 
 log = "0.4.6"
 simple_logger = "5.0.0"
+
+[workspace]
+members = ["reya-rust-sdk"]
 
 [workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.
