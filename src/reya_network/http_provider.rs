@@ -1,19 +1,14 @@
 use crate::reya_network::data_types;
 use alloy::{
     network::EthereumSigner,
-    primitives::{address, Address, Bytes, B256, I256, U128, U256, U8},
-    providers::{
-        ext::{AnvilApi, TraceApi},
-        Provider, ProviderBuilder,
-    },
-    rpc::types::{eth::TransactionRequest, trace::parity::TraceType},
+    primitives::{Address, Bytes, B256, I256, U256},
+    providers::ProviderBuilder,
     signers::wallet::LocalWallet,
     sol,
 };
-use alloy_sol_types::{sol_data::*, SolType, SolValue};
-
+use alloy_sol_types::SolValue;
 use eyre;
-
+use tracing::{debug, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
 // Codegen from ABI file to interact with the contract.
@@ -89,7 +84,7 @@ impl HttpProvider {
     ///
     /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
     ///
-    /// println!("Created account, tx hash:{:?}", transaction_hash);
+    /// info!("Created account, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn create_account(
         &self,
@@ -109,7 +104,7 @@ impl HttpProvider {
 
         let receipt = builder.send().await?.get_receipt().await?;
         if receipt.inner.is_success() {
-            println!("Create account, Transaction receipt:{:?}", receipt);
+            debug!("Create account, Transaction receipt:{:?}", receipt);
         }
         eyre::Ok(receipt.transaction_hash)
     }
@@ -156,7 +151,7 @@ impl HttpProvider {
     ///
     /// let transaction_hash = http_provider.execute(signer, account_id, market_id, exchange_id, order_base, order_price_limit).await;
     ///
-    /// println!("Execute match order, tx hash:{:?}", transaction_hash);
+    /// info!("Execute match order, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn execute(
         &self,
@@ -166,11 +161,15 @@ impl HttpProvider {
         exchange_id: u128,
         order_base: I256,        // side(+/- = buy/sell) + volume i256
         order_price_limit: U256, // order price limit u256
-    ) -> eyre::Result<&str> // return the transaction hash
+    ) -> eyre::Result<B256> // return the transaction hash
     {
-        println!(
+        trace!(
             "Executing order, account={:?}, market={:?}, exchange:={:?}, base:{:?}, price={:?}",
-            account_id, market_id, exchange_id, order_base, order_price_limit
+            account_id,
+            market_id,
+            exchange_id,
+            order_base,
+            order_price_limit
         );
 
         // create http provider
@@ -204,17 +203,12 @@ impl HttpProvider {
         let builder = core_proxy.execute(account_id, vec![command]);
         let transaction_result = builder.send().await?;
         let receipt = transaction_result.get_receipt().await?;
+
         if receipt.inner.is_success() {
-            println!("Execute receipt:{:?}", receipt);
+            debug!("Execute receipt:{:?}", receipt);
         }
 
-        println!("{:?}", receipt);
-
-        // let execute_call = core_proxy.execute(account_id, vec![command]);
-        // let calldata = execute_call.calldata().to_owned();
-        // println!("{:?}", calldata);
-
-        eyre::Ok("Done")
+        eyre::Ok(receipt.transaction_hash)
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -231,7 +225,7 @@ impl HttpProvider {
     ///
     ///   let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
     ///
-    ///  println!("get account owner address, tx hash:{:?}", transaction_hash);
+    ///  info!("get account owner address, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
     {
