@@ -11,7 +11,7 @@ use eyre;
 use tracing::{debug, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
-// Codegen from ABI file to interact with the contract.
+// Codegen from ABI file to interact with the reya core proxy contract.
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
@@ -35,10 +35,10 @@ pub struct HttpProvider {
 }
 
 /**
- * HTTP Provider, implements several method to the CoreProxy
- * - create_account, create a new account
- * - execute, insert an order to match the LP limit order. Currently only a market order
- * - get_account_owner, gets the owners account
+ * HTTP Provider, implements several wrapper methods around Reya Core Proxy Contract On Reya Network
+ * - create_account, create a new margin account
+ * - execute, initiate a market order against the passive lp pool as a counterparty
+ * - get_account_owner, gets the address which owns a given margin account based on its id
  */
 #[allow(dead_code)]
 impl HttpProvider {
