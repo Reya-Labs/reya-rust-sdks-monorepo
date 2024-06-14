@@ -26,7 +26,8 @@ async fn main() -> eyre::Result<()> {
         .expect("Private key must be set as environment variable")
         .to_lowercase();
 
-    let account_id = 11212u128; // externaly provided by trading party
+    // example margin account id
+    let account_id = 11212u128;
 
     // create account
     /*{
@@ -52,9 +53,11 @@ async fn main() -> eyre::Result<()> {
         let signer: LocalWallet = private_key.parse().unwrap();
 
         let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-        let exchange_id = 1u128; //1=reya exchange
-        let order_base: I256 = "+35000000000000000".parse().unwrap(); // 0.035 eth
-        let order_price_limit: U256 = "4000000000000000000000".parse().unwrap(); // 4000 rusd
+        let exchange_id = 1u128; //1=reya dex exchange id
+        let order_base: I256 = "+35000000000000000".parse().unwrap(); // 0.035 eth (order size in base terms)
+        let order_price_limit: U256 = "4000000000000000000000".parse().unwrap(); // 4000 rusd (order price limit to control slippage tolerance)
+
+        // execute a long market order against the passive pool as a counterparty
         let transaction_hash = http_provider
             .execute(
                 signer,
@@ -76,6 +79,8 @@ async fn main() -> eyre::Result<()> {
         let exchange_id = 1u128; //1=reya exchange
         let order_base: I256 = "-35000000000000000".parse().unwrap(); // 0.035 eth
         let order_price_limit: U256 = "3000000000000000000000".parse().unwrap(); // 3000 rusd
+
+        // execute a short market order against the passive pool as a counterparty
         let transaction_hash = http_provider
             .execute(
                 signer,
