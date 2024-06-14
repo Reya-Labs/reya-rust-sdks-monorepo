@@ -51,14 +51,21 @@ hex = "0.4.3"
 tokio = "1"
 
 # futures
-futures = "0.3"
-futures-util = "0.3"
+#futures = "0.3"
+#futures-util = "0.3"
 
 # misc
 eyre = "0.6.12"
 
 # env
 dotenv = "0.15.0"
+
+# tracing
+tracing = "0.1.40"
+
+# log, define only in root cargo.toml 
+log = "0.4.6"
+simple_logger = "5.0.0"
 
 [workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.
