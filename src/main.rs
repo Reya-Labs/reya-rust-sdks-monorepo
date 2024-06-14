@@ -26,7 +26,7 @@ async fn main() -> eyre::Result<()> {
         .expect("Private key must be set as environment variable")
         .to_lowercase();
 
-    let account_id = 54u128; // externaly provided by trading party
+    let account_id = 11212u128; // externaly provided by trading party
 
     // create account
     /*{
