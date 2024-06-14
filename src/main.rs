@@ -75,7 +75,7 @@ async fn main() -> eyre::Result<()> {
         let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
         let exchange_id = 1u128; //1=reya exchange
         let order_base: I256 = "-35000000000000000".parse().unwrap(); // 0.035 eth
-        let order_price_limit: U256 = "4000000000000000000000".parse().unwrap(); // 4000 rusd
+        let order_price_limit: U256 = "3000000000000000000000".parse().unwrap(); // 3000 rusd
         let transaction_hash = http_provider
             .execute(
                 signer,
