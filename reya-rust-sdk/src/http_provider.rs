@@ -1,14 +1,16 @@
+use crate::data_types::{self, CORE_CONTRACT_ADDRESS};
 use alloy::{
     network::EthereumSigner,
     primitives::{Address, Bytes, B256, I256, U256},
-    providers::ProviderBuilder,
+    providers::{Provider, ProviderBuilder},
+    rpc::types::eth::Filter,
     signers::wallet::LocalWallet,
     sol,
 };
+//use alloy_core::primitives::TxHash;
 use alloy_sol_types::SolValue;
-use crate::data_types;
 use eyre;
-use tracing::{debug, trace}; //, error, info, span, warn, Level};
+use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
 // Codegen from ABI file to interact with the contract.
@@ -242,5 +244,42 @@ impl HttpProvider {
             core_proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
+    }
+
+    pub async fn get_transaction(
+        &self,
+        tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> eyre::Result<Vec<u128>> {
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
+
+        info!("Transaction reponse:{:?}", Some(transaction_response));
+
+        eyre::Ok(vec![])
+    }
+
+    async fn get_transaction_receipt(
+        &self,
+        tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> eyre::Result<Vec<u128>> {
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        // filter is not complete if we want e.g. the tx_log details of the tx_has provided
+        let filter = Filter::new().address(
+            data_types::CORE_CONTRACT_ADDRESS
+                .parse::<Address>()
+                .unwrap(),
+        );
+
+        let transaction_receipt = provider.get_logs(&filter).await;
+
+        info!("Transaction receipt:{:?}", Some(transaction_receipt));
+
+        eyre::Ok(vec![])
     }
 }
