@@ -2896,8 +2896,6 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "alloy-core 0.7.5 (git+https://github.com/alloy-rs/core)",
- "alloy-dyn-abi",
- "alloy-json-abi",
  "alloy-primitives 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "alloy-sol-types",
  "dotenv",

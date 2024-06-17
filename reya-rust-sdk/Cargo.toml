@@ -18,9 +18,9 @@ alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features
     "rpc-client-ipc",
     "rpc-client-ws",
     "rpc-client",
+    "rpc-types",
     "rpc-types-eth",
     "rpc-types-trace",
-    "rpc-types",
     "signer-aws",
     "signer-keystore",
     "signer-ledger",
@@ -35,11 +35,10 @@ alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features
 ] }
 
 alloy-core = { git = "https://github.com/alloy-rs/core", version = "0.7.2"}
-alloy-dyn-abi = { version = "0.7.2", default-features = false }
-alloy-json-abi = { version = "0.7.2", default-features = false }
+# alloy-dyn-abi = { version = "0.7.2", default-features = false }
+# alloy-json-abi = { version = "0.7.2", default-features = false }
 alloy-primitives = { version = "0.7.2", default-features = false }
 alloy-sol-types = { version = "0.7.2", default-features = false }
-
 
 # URL 
 url = "2.5.0"

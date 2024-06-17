@@ -71,7 +71,8 @@ fn main() -> eyre::Result<()> {
                 .to_lowercase();
 
             // create account
-            create_account(&private_key, &http_provider).await;
+            //create_account(&private_key, &http_provider).await;
+
             // get account owner
             let account_id = 11212u128; // externaly provided by trading party
             get_account_owner(account_id, &http_provider).await;
