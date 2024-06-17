@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-
 alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features = [
     "consensus",
     "contract",
@@ -49,11 +48,7 @@ url = "2.5.0"
 hex = "0.4.3"
 
 # async
-tokio = "1"
-
-# futures
-#futures = "0.3"
-#futures-util = "0.3"
+tokio = { version = "1", features = ["full"] }
 
 # misc
 eyre = "0.6.12"
@@ -66,4 +61,3 @@ tracing = "0.1.40"
 
 [lints]
 workspace = true
-
