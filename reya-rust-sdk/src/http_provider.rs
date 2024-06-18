@@ -1,4 +1,4 @@
-use crate::data_types::{self, CORE_CONTRACT_ADDRESS};
+use crate::data_types;
 
 use alloy::{
     network::EthereumWallet,
@@ -263,7 +263,7 @@ impl HttpProvider {
 
     async fn get_transaction_receipt(
         &self,
-        tx_hash: alloy_primitives::FixedBytes<32>,
+        _tx_hash: alloy_primitives::FixedBytes<32>,
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
