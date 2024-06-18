@@ -1,7 +1,8 @@
 use alloy::{
     primitives::{address, I256, U256},
-    signers::wallet::LocalWallet,
+    signers::local::PrivateKeySigner,
 };
+
 use dotenv::dotenv;
 use eyre;
 use reya_rust_sdk::http_provider;
@@ -13,7 +14,7 @@ use url::Url;
 
 async fn create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-    let signer: LocalWallet = private_key.parse().unwrap();
+    let signer: PrivateKeySigner = private_key.parse().unwrap();
 
     let transaction_hash = http_provider
         .create_account(signer, &account_owner_address)
@@ -36,7 +37,7 @@ async fn execute_order(
     order_base: &I256,
     order_price_limit: &U256,
 ) {
-    let signer: LocalWallet = private_key.parse().unwrap();
+    let signer: PrivateKeySigner = private_key.parse().unwrap();
 
     let transaction_hash = http_provider
         .execute(
