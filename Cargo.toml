@@ -5,15 +5,7 @@ edition = "2021"
 
 [dependencies]
 reya-rust-sdk = { path = "./reya-rust-sdk" } # from a path in the local filesystem
-
-alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0"}
-
-alloy-core = { git = "https://github.com/alloy-rs/core", version = "0.7.2"}
-alloy-dyn-abi = { version = "0.7.2", default-features = false }
-alloy-json-abi = { version = "0.7.2", default-features = false }
-alloy-primitives = { version = "0.7.2", default-features = false }
-alloy-sol-types = { version = "0.7.2", default-features = false }
-
+alloy = { version = "0.1", features = ["full"] }
 
 # URL 
 url = "2.5.0"

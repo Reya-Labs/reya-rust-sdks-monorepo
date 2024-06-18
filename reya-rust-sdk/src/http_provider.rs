@@ -1,13 +1,13 @@
 use crate::data_types::{self, CORE_CONTRACT_ADDRESS};
+
 use alloy::{
-    network::EthereumSigner,
+    network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
     rpc::types::eth::Filter,
-    signers::wallet::LocalWallet,
+    signers::local::PrivateKeySigner,
     sol,
 };
-//use alloy_core::primitives::TxHash;
 use alloy_sol_types::SolValue;
 use eyre;
 use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
@@ -33,7 +33,7 @@ sol!(
  */
 #[derive(Debug)]
 pub struct HttpProvider {
-    url: Url,
+    url: reqwest::Url,
 }
 
 /**
@@ -77,12 +77,12 @@ impl HttpProvider {
     /// use alloy::{
     ///    primitives::{I256, U256},
     ///
-    ///    signers::wallet::LocalWallet,
+    ///    signers::wallet::PrivateKeySigner,
     /// };
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: LocalWallet = private_key.parse().unwrap();
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
     ///
@@ -90,14 +90,14 @@ impl HttpProvider {
     ///  '''
     pub async fn create_account(
         &self,
-        signer: LocalWallet,
+        signer: PrivateKeySigner,
         account_owner_address: &Address,
     ) -> eyre::Result<B256> // return the transaction hash
     {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .signer(EthereumSigner::from(signer))
+            .wallet(EthereumWallet::from(signer))
             .on_http(self.url.clone());
 
         // core create account
@@ -134,12 +134,12 @@ impl HttpProvider {
     /// use alloy::{
     ///    primitives::{I256, U256},
     ///
-    ///    signers::wallet::LocalWallet,
+    ///    signers::wallet::PrivateKeySigner,
     /// };
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: LocalWallet = private_key.parse().unwrap();
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     /// let transaction_hash = http_provider
     ///
@@ -157,7 +157,7 @@ impl HttpProvider {
     ///  '''
     pub async fn execute(
         &self,
-        signer: LocalWallet,
+        signer: PrivateKeySigner,
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
@@ -177,7 +177,7 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .signer(EthereumSigner::from(signer))
+            .wallet(EthereumWallet::from(signer))
             .on_http(self.url.clone());
 
         let core_proxy =
@@ -223,7 +223,7 @@ impl HttpProvider {
     ///
     /// # Examples
     /// '''
-    ///  let signer: LocalWallet = private_key.parse().unwrap();
+    ///  let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     ///   let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
     ///
