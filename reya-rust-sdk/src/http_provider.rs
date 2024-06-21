@@ -1,14 +1,16 @@
-use crate::reya_network::data_types;
+use crate::data_types;
+
 use alloy::{
-    network::EthereumSigner,
+    network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
-    providers::ProviderBuilder,
-    signers::wallet::LocalWallet,
+    providers::{Provider, ProviderBuilder},
+    rpc::types::eth::Filter,
+    signers::local::PrivateKeySigner,
     sol,
 };
 use alloy_sol_types::SolValue;
 use eyre;
-use tracing::{debug, trace}; //, error, info, span, warn, Level};
+use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
 // Codegen from ABI file to interact with the reya core proxy contract.
@@ -16,14 +18,14 @@ sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     CoreProxy,
-    "transactions/abi/CoreProxy.json"
+    "./transactions/abi/CoreProxy.json"
 );
 
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     rUSDProxy,
-    "transactions/abi/rUsdProxy.json"
+    "./transactions/abi/rUsdProxy.json"
 );
 
 /**
@@ -31,7 +33,7 @@ sol!(
  */
 #[derive(Debug)]
 pub struct HttpProvider {
-    url: Url,
+    url: reqwest::Url,
 }
 
 /**
@@ -75,12 +77,12 @@ impl HttpProvider {
     /// use alloy::{
     ///    primitives::{I256, U256},
     ///
-    ///    signers::wallet::LocalWallet,
+    ///    signers::wallet::PrivateKeySigner,
     /// };
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: LocalWallet = private_key.parse().unwrap();
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
     ///
@@ -88,14 +90,14 @@ impl HttpProvider {
     ///  '''
     pub async fn create_account(
         &self,
-        signer: LocalWallet,
+        signer: PrivateKeySigner,
         account_owner_address: &Address,
     ) -> eyre::Result<B256> // return the transaction hash
     {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .signer(EthereumSigner::from(signer))
+            .wallet(EthereumWallet::from(signer))
             .on_http(self.url.clone());
 
         // core create account
@@ -132,12 +134,12 @@ impl HttpProvider {
     /// use alloy::{
     ///    primitives::{I256, U256},
     ///
-    ///    signers::wallet::LocalWallet,
+    ///    signers::wallet::PrivateKeySigner,
     /// };
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: LocalWallet = private_key.parse().unwrap();
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     /// let transaction_hash = http_provider
     ///
@@ -155,7 +157,7 @@ impl HttpProvider {
     ///  '''
     pub async fn execute(
         &self,
-        signer: LocalWallet,
+        signer: PrivateKeySigner,
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
@@ -175,7 +177,7 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .signer(EthereumSigner::from(signer))
+            .wallet(EthereumWallet::from(signer))
             .on_http(self.url.clone());
 
         let core_proxy =
@@ -221,7 +223,7 @@ impl HttpProvider {
     ///
     /// # Examples
     /// '''
-    ///  let signer: LocalWallet = private_key.parse().unwrap();
+    ///  let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
     ///   let transaction_hash = http_provider.get_account_owner(signer, account_id).await;
     ///
@@ -242,5 +244,42 @@ impl HttpProvider {
             core_proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
+    }
+
+    pub async fn get_transaction(
+        &self,
+        tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> eyre::Result<Vec<u128>> {
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
+
+        info!("Transaction reponse:{:?}", Some(transaction_response));
+
+        eyre::Ok(vec![])
+    }
+
+    async fn get_transaction_receipt(
+        &self,
+        _tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> eyre::Result<Vec<u128>> {
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        // filter is not complete if we want e.g. the tx_log details of the tx_has provided
+        let filter = Filter::new().address(
+            data_types::CORE_CONTRACT_ADDRESS
+                .parse::<Address>()
+                .unwrap(),
+        );
+
+        let transaction_receipt = provider.get_logs(&filter).await;
+
+        info!("Transaction receipt:{:?}", Some(transaction_receipt));
+
+        eyre::Ok(vec![])
     }
 }

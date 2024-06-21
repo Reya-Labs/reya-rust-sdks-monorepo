@@ -4,42 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0", features = [
-    "consensus",
-    "contract",
-    "eips",
-    "kzg",
-    "network",
-    "node-bindings",
-    "provider-http",
-    "provider-ipc",
-    "provider-ws",
-    "providers",
-    "rpc-client-ipc",
-    "rpc-client-ws",
-    "rpc-client",
-    "rpc-types-eth",
-    "rpc-types-trace",
-    "rpc-types",
-    "signer-aws",
-    "signer-keystore",
-    "signer-ledger",
-    "signer-mnemonic",
-    "signer-trezor",
-    "signer-wallet",
-    "signer-yubihsm",
-    "signers",
-    "transport-http",
-    "transport-ws",
-    "transport-ipc"
-] }
-
-alloy-core = { git = "https://github.com/alloy-rs/core", version = "0.7.2"}
-alloy-dyn-abi = { version = "0.7.2", default-features = false }
-alloy-json-abi = { version = "0.7.2", default-features = false }
-alloy-primitives = { version = "0.7.2", default-features = false }
-alloy-sol-types = { version = "0.7.2", default-features = false }
-
+reya-rust-sdk = { path = "./reya-rust-sdk" } # from a path in the local filesystem
+alloy = { version = "0.1", features = ["full"] }
 
 # URL 
 url = "2.5.0"
@@ -48,7 +14,7 @@ url = "2.5.0"
 hex = "0.4.3"
 
 # async
-tokio = "1"
+tokio = { version = "1", features = ["full"] }
 
 # futures
 #futures = "0.3"
