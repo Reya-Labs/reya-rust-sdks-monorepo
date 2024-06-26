@@ -147,6 +147,72 @@
   },
   {
     "type": "function",
+    "name": "batchExecute",
+    "inputs": [
+      {
+        "name": "orders",
+        "type": "tuple[]",
+        "internalType": "struct ConditionalOrderDetails[]",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "counterpartyAccountIds",
+            "type": "uint128[]",
+            "internalType": "uint128[]"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8",
+            "internalType": "enum OrderType"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signatures",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "createAccount",
     "inputs": [
       {

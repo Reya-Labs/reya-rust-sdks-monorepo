@@ -17,6 +17,33 @@ pub enum CommandType {
 }
 
 #[allow(dead_code)]
+#[repr(u8)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum OrderType {
+    StopLoss = 0,
+    TakeProfit,
+}
+
+/// order struct to execute orders in a batch
+#[derive(Debug)]
+pub struct BatchOrder {
+    pub account_id: u128,
+    pub market_id: u128,
+    pub exchange_id: u128,
+    pub order_type: OrderType,
+    /// side(+/- = buy/sell) + volume i256
+    pub order_base: I256,
+    /// stop price on;y set when order type = stop_loss
+    pub stop_price: I256,
+
+    pub price_limit: U256,
+    pub signer_address: Address,
+    pub counterparty_account_ids: Vec<u128>,
+    pub order_nonce: U256,
+    pub signature: String,
+}
+
+#[allow(dead_code)]
 pub struct MarginInfo {
     /// The collateral token for which the information below is defined
     pub collateral: Address,
