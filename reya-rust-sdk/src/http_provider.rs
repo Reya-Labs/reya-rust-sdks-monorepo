@@ -8,6 +8,7 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
+use alloy_primitives::bytes::Buf;
 use alloy_sol_types::SolValue;
 use eyre;
 use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
@@ -184,12 +185,9 @@ impl HttpProvider {
             CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
 
         // generate encoded core command input
-
         let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
-
-        let counterparty_account_ids: Vec<u128> = vec![2u128];
-
-        let base_price_counterparties_encoded =
+        let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+        let base_price_counterparties_encoded: Vec<u8> =
             (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
         // construct core proxy command struct
@@ -210,6 +208,88 @@ impl HttpProvider {
             debug!("Execute receipt:{:?}", receipt);
         }
 
+        eyre::Ok(receipt.transaction_hash)
+    }
+
+    ///
+    /// execute a batch of orders
+    ///
+    pub async fn execute_batch(
+        &self,
+        signer: PrivateKeySigner,
+        batch_orders: &Vec<data_types::BatchOrder>,
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
+        //
+        let mut orders: Vec<CoreProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<Bytes> = vec![];
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(EthereumWallet::from(signer))
+            .on_http(self.url.clone());
+
+        let core_proxy =
+            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
+
+        // add all order ans signatures to the batch vector
+        for batch_order in batch_orders {
+            trace!("Batch execute orders {:?}", batch_order);
+
+            //
+            // generate encoded core command for the input bytes
+            // The input byte structure is:
+            // {
+            //      counter_party,
+            //      {
+            //           trigger_price, // stop_price!
+            //           price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+            //      } // endcode
+            // }// endcode
+            //
+            // whereby both section should be encoded
+            let mut trigger_price = batch_order.order_base;
+            if batch_order.order_type == data_types::OrderType::StopLoss {
+                trigger_price = batch_order.stop_price;
+            }
+
+            let base_price_encoded = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+
+            let counterparty_account_ids: Vec<u128> = vec![2u128];
+
+            let base_price_counterparties_encoded: Vec<u8> =
+                (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
+
+            orders.push(CoreProxy::ConditionalOrderDetails {
+                accountId: batch_order.account_id,
+                marketId: batch_order.market_id,
+                exchangeId: batch_order.exchange_id,
+                counterpartyAccountIds: batch_order.counterparty_account_ids.clone(),
+                orderType: batch_order.order_type as u8,
+                inputs: Bytes::from(base_price_counterparties_encoded),
+                signer: batch_order.signer_address,
+                nonce: batch_order.order_nonce,
+            });
+
+            // take from batch order struct
+            let signature_bytes = batch_order
+                .signature
+                .as_bytes()
+                .copy_to_bytes(batch_order.signature.len());
+            let signature: Bytes = Bytes::from(signature_bytes);
+            signatures.push(signature);
+        }
+
+        let builder = core_proxy.batchExecute(orders, signatures);
+        let transaction_result = builder.send().await?;
+        let receipt = transaction_result.get_receipt().await?;
+
+        if receipt.inner.is_success() {
+            debug!("BatchExecute receipt:{:?}", receipt);
+        }
+
+        //
         eyre::Ok(receipt.transaction_hash)
     }
 

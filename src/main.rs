@@ -12,7 +12,7 @@ use tokio;
 use tracing::info;
 use url::Url;
 
-async fn create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
+async fn _create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
     let signer: PrivateKeySigner = private_key.parse().unwrap();
 
