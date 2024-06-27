@@ -2,14 +2,14 @@ use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
 };
-
 use dotenv::dotenv;
 use eyre;
 use reya_rust_sdk::http_provider;
+use rust_decimal::{prelude::*, Decimal};
 use simple_logger;
 use std::env;
 use tokio;
-use tracing::info;
+use tracing::*;
 use url::Url;
 
 async fn _create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
@@ -26,6 +26,33 @@ async fn _create_account(private_key: &String, http_provider: &http_provider::Ht
 async fn get_account_owner(account_id: u128, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = http_provider.get_account_owner(account_id).await;
     info!("get account owner address,:{:?}", account_owner_address);
+}
+
+async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProvider) {
+    let pool_price_result = http_provider.get_pool_price(market_id).await;
+    match pool_price_result {
+        Ok(pool_price) => {
+            info!(
+                "get pool price for market:{:?}, price:{:?}",
+                market_id, //
+                pool_price
+            );
+            let pool_price_str = pool_price.to_string();
+            let price_result = Decimal::from_str(&pool_price_str);
+            match price_result {
+                Ok(p) => {
+                    let divider = Decimal::new(1, 18);
+                    info!("Pool price:{:?}", p / divider);
+                }
+                Err(err) => {
+                    error!("{:?}", err);
+                }
+            }
+        }
+        Err(err) => {
+            error!("Failed to retreive pool price {:?}", err);
+        }
+    }
 }
 
 async fn execute_order(
@@ -74,13 +101,16 @@ fn main() -> eyre::Result<()> {
             // create account
             //create_account(&private_key, &http_provider).await;
 
+            // get pool price for market id
+            let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+            get_pool_price(market_id, &http_provider).await;
+
             // get account owner
             let account_id = 11212u128; // externaly provided by trading party
             get_account_owner(account_id, &http_provider).await;
 
             // execute buy market order
             {
-                let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
                 let exchange_id = 1u128; //1=reya exchange
                 let order_base: I256 = "+35000000000000000".parse().unwrap(); // 0.035 eth
                 let order_price_limit: U256 = "4000000000000000000000".parse().unwrap(); // 4000 rusd
@@ -98,7 +128,7 @@ fn main() -> eyre::Result<()> {
 
             // execute sell market order
             {
-                let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+                //let market_id = 1u128; // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
                 let exchange_id = 1u128; //1=reya exchange
                 let order_base: I256 = "-35000000000000000".parse().unwrap(); // 0.035 eth
                 let order_price_limit: U256 = "3000000000000000000000".parse().unwrap(); // 3000 rusd

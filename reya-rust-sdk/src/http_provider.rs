@@ -1,5 +1,4 @@
 use crate::data_types;
-
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -237,18 +236,15 @@ impl HttpProvider {
         for batch_order in batch_orders {
             trace!("Batch execute orders {:?}", batch_order);
 
-            //
             // generate encoded core command for the input bytes
             // The input byte structure is:
             // {
-            //      counter_party,
-            //      {
-            //           trigger_price, // stop_price!
-            //           price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-            //      } // endcode
+            //     trigger_price, // stop_price!
+            //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
             // }// endcode
             //
             // whereby both section should be encoded
+            //
             let mut trigger_price = batch_order.order_base;
             if batch_order.order_type == data_types::OrderType::StopLoss {
                 trigger_price = batch_order.stop_price;
@@ -256,18 +252,17 @@ impl HttpProvider {
 
             let base_price_encoded = (trigger_price, batch_order.price_limit).abi_encode_sequence();
 
-            let counterparty_account_ids: Vec<u128> = vec![2u128];
+            let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
 
-            let base_price_counterparties_encoded: Vec<u8> =
-                (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
+            //let base_price_counterparties_encoded: Vec<u8> =                (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
             orders.push(CoreProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
                 marketId: batch_order.market_id,
                 exchangeId: batch_order.exchange_id,
-                counterpartyAccountIds: batch_order.counterparty_account_ids.clone(),
+                counterpartyAccountIds: counterparty_account_ids.clone(),
                 orderType: batch_order.order_type as u8,
-                inputs: Bytes::from(base_price_counterparties_encoded),
+                inputs: Bytes::from(base_price_encoded),
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             });
@@ -288,7 +283,6 @@ impl HttpProvider {
         if receipt.inner.is_success() {
             debug!("BatchExecute receipt:{:?}", receipt);
         }
-
         //
         eyre::Ok(receipt.transaction_hash)
     }
@@ -361,5 +355,25 @@ impl HttpProvider {
         info!("Transaction receipt:{:?}", Some(transaction_receipt));
 
         eyre::Ok(vec![])
+    }
+
+    ///
+    /// get the current pool price by market id and returns the instantaneous pool price
+    ///
+    pub async fn get_pool_price(&self, market_id: u128) -> eyre::Result<U256> {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+
+        // Call the contract and retrieve the instantaneous pool price.
+        let CoreProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy
+            .getInstantaneousPoolPrice(market_id)
+            .call()
+            .await?;
+
+        eyre::Ok(_0)
     }
 }

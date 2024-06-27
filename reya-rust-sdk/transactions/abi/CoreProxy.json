@@ -1,49 +1,6 @@
 [
   {
     "type": "function",
-    "name": "getProtocolConfiguration",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct ProtocolConfiguration.Data",
-        "components": [
-          {
-            "name": "oracleManagerAddress",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "exchangePassNFTAddress",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "feeCollectorAccountId",
-            "type": "uint128",
-            "internalType": "uint128"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "pure"
-  },
-  {
-    "type": "function",
-    "name": "getLastCreatedAccountId",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "execute",
     "inputs": [
       {
@@ -248,5 +205,24 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getInstantaneousPoolPrice",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ],
+    "stateMutability": "nonpayable"
   }
 ]

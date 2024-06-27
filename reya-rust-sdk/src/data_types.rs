@@ -5,6 +5,8 @@ use alloy::primitives::U256;
 #[allow(dead_code)]
 pub static CORE_CONTRACT_ADDRESS: &str = "0xA763B6a5E09378434406C003daE6487FbbDc1a80";
 
+pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
+
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug)]
@@ -35,10 +37,8 @@ pub struct BatchOrder {
     pub order_base: I256,
     /// stop price on;y set when order type = stop_loss
     pub stop_price: I256,
-
     pub price_limit: U256,
     pub signer_address: Address,
-    pub counterparty_account_ids: Vec<u128>,
     pub order_nonce: U256,
     pub signature: String,
 }
