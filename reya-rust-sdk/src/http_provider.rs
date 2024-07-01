@@ -10,7 +10,7 @@ use alloy::{
 use alloy_primitives::bytes::Buf;
 use alloy_sol_types::SolValue;
 use eyre;
-use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
+use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
 // Codegen from ABI file to interact with the reya core proxy contract.
@@ -216,7 +216,7 @@ impl HttpProvider {
     pub async fn execute_batch(
         &self,
         signer: PrivateKeySigner,
-        batch_orders: &Vec<data_types::BatchOrder>,
+        batch_orders: &mut Vec<data_types::BatchOrder>,
     ) -> eyre::Result<B256> // return the transaction hash
     {
         //
@@ -236,25 +236,23 @@ impl HttpProvider {
         for batch_order in batch_orders {
             trace!("Batch execute orders {:?}", batch_order);
 
-            // generate encoded core command for the input bytes
-            // The input byte structure is:
-            // {
-            //     trigger_price, // stop_price!
-            //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-            // }// endcode
-            //
-            // whereby both section should be encoded
-            //
-            let mut trigger_price = batch_order.order_base;
+            let mut encoded_inputs: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
-                trigger_price = batch_order.stop_price;
+                // generate encoded core command for the input bytes of a stop_loss order
+                // The input byte structure is:
+                // {
+                //     trigger_price, // stop_price!
+                //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+                // }// endcode
+                //
+                // whereby both section should be encoded
+
+                let trigger_price = batch_order.stop_price;
+                let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+                encoded_inputs.clone_from(&bytes);
             }
 
-            let base_price_encoded = (trigger_price, batch_order.price_limit).abi_encode_sequence();
-
             let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
-
-            //let base_price_counterparties_encoded: Vec<u8> =                (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
             orders.push(CoreProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -262,7 +260,7 @@ impl HttpProvider {
                 exchangeId: batch_order.exchange_id,
                 counterpartyAccountIds: counterparty_account_ids.clone(),
                 orderType: batch_order.order_type as u8,
-                inputs: Bytes::from(base_price_encoded),
+                inputs: Bytes::from(encoded_inputs),
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             });
@@ -278,10 +276,25 @@ impl HttpProvider {
 
         let builder = core_proxy.batchExecute(orders, signatures);
         let transaction_result = builder.send().await?;
+
         let receipt = transaction_result.get_receipt().await?;
 
         if receipt.inner.is_success() {
             debug!("BatchExecute receipt:{:?}", receipt);
+            let data: Bytes = Bytes::new();
+            let validate: bool = true;
+            let batch_execute_returns = builder.decode_output(data, validate);
+            match batch_execute_returns {
+                Ok(outputs) => {
+                    // get batch  output is succesfull. Check the individual output array of bytes to check of all orders are ok
+                    for _output in outputs.outputs {
+                        //if out
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to get outputs from transaction:{:?}", err);
+                }
+            }
         }
         //
         eyre::Ok(receipt.transaction_hash)

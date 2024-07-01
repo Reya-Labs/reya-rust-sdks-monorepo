@@ -43,6 +43,8 @@ pub struct BatchOrder {
     pub signer_address: Address,
     pub order_nonce: U256,
     pub signature: String,
+    /// tells that the order is executed sucessfully on the chain, value is only used as return state
+    pub is_executed_successfully: bool,
 }
 
 #[allow(dead_code)]
