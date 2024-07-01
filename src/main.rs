@@ -98,8 +98,8 @@ async fn main() -> eyre::Result<()> {
         .arg(
             Arg::new("get-pool-price")
                 .long("pool-price")
-                //.value_name("market_id")
                 .action(ArgAction::Set)
+                .value_names(["sdk_url","market_id"])
                 .num_args(1..)
                 .help("Gets the pool price for the required market id"),
         )
@@ -108,9 +108,11 @@ async fn main() -> eyre::Result<()> {
                 .long("create-account")
                 .action(ArgAction::Set)
                 .num_args(1..)
-                //.value_name("private_key")
+                .value_names(["sdk_url","private_key"])
                 .help("creates an account with the provided private key"),
-        );
+        )
+        //.try_get_matches_from(vec!["cmd", "--major", "--patch"])
+        ;
 
     let matches = commands.clone().get_matches();
 
@@ -126,12 +128,14 @@ async fn main() -> eyre::Result<()> {
             .map(|s| s.as_str())
             .collect();
 
-        let p1 = String::from(packages[0]);
+        let p1 = String::from(packages[0]); // sdk_url
+        let p2 = String::from(packages[1]); // market_id
 
+        let url = Url::parse(&p1).unwrap();
+        let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
         // get pool price for market id
-        let market_id: u128 = p1.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-        println!("calling get pool price for market:{}", market_id);
-
+        let market_id: u128 = p2.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+        println!("calling get pool price for market:{} {:?}", market_id, url);
         get_pool_price(market_id, &http_provider).await;
     } else if matches.contains_id("create-account") {
         // create account
