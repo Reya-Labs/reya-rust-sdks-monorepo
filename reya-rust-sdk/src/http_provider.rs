@@ -1,5 +1,4 @@
 use crate::data_types;
-
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -8,9 +7,10 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
+use alloy_primitives::bytes::Buf;
 use alloy_sol_types::SolValue;
 use eyre;
-use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
+use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
 // Codegen from ABI file to interact with the reya core proxy contract.
@@ -184,12 +184,9 @@ impl HttpProvider {
             CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
 
         // generate encoded core command input
-
         let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
-
-        let counterparty_account_ids: Vec<u128> = vec![2u128];
-
-        let base_price_counterparties_encoded =
+        let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+        let base_price_counterparties_encoded: Vec<u8> =
             (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
         // construct core proxy command struct
@@ -210,6 +207,96 @@ impl HttpProvider {
             debug!("Execute receipt:{:?}", receipt);
         }
 
+        eyre::Ok(receipt.transaction_hash)
+    }
+
+    ///
+    /// execute a batch of orders
+    ///
+    pub async fn execute_batch(
+        &self,
+        signer: PrivateKeySigner,
+        batch_orders: &mut Vec<data_types::BatchOrder>,
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
+        //
+        let mut orders: Vec<CoreProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<Bytes> = vec![];
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(EthereumWallet::from(signer))
+            .on_http(self.url.clone());
+
+        let core_proxy =
+            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
+
+        // add all order ans signatures to the batch vector
+        for batch_order in batch_orders {
+            trace!("Batch execute orders {:?}", batch_order);
+
+            let mut encoded_inputs: Vec<u8> = Vec::new();
+            if batch_order.order_type == data_types::OrderType::StopLoss {
+                // generate encoded core command for the input bytes of a stop_loss order
+                // The input byte structure is:
+                // {
+                //     trigger_price, // stop_price!
+                //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+                // }// endcode
+                //
+                // whereby both section should be encoded
+
+                let trigger_price = batch_order.stop_price;
+                let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+                encoded_inputs.clone_from(&bytes);
+            }
+
+            let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+
+            orders.push(CoreProxy::ConditionalOrderDetails {
+                accountId: batch_order.account_id,
+                marketId: batch_order.market_id,
+                exchangeId: batch_order.exchange_id,
+                counterpartyAccountIds: counterparty_account_ids.clone(),
+                orderType: batch_order.order_type as u8,
+                inputs: Bytes::from(encoded_inputs),
+                signer: batch_order.signer_address,
+                nonce: batch_order.order_nonce,
+            });
+
+            // take from batch order struct
+            let signature_bytes = batch_order
+                .signature
+                .as_bytes()
+                .copy_to_bytes(batch_order.signature.len());
+            let signature: Bytes = Bytes::from(signature_bytes);
+            signatures.push(signature);
+        }
+
+        let builder = core_proxy.batchExecute(orders, signatures);
+        let transaction_result = builder.send().await?;
+
+        let receipt = transaction_result.get_receipt().await?;
+
+        if receipt.inner.is_success() {
+            debug!("BatchExecute receipt:{:?}", receipt);
+            let data: Bytes = Bytes::new();
+            let validate: bool = true;
+            let batch_execute_returns = builder.decode_output(data, validate);
+            match batch_execute_returns {
+                Ok(outputs) => {
+                    // get batch  output is succesfull. Check the individual output array of bytes to check of all orders are ok
+                    for _output in outputs.outputs {
+                        //if out
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to get outputs from transaction:{:?}", err);
+                }
+            }
+        }
+        //
         eyre::Ok(receipt.transaction_hash)
     }
 
@@ -281,5 +368,25 @@ impl HttpProvider {
         info!("Transaction receipt:{:?}", Some(transaction_receipt));
 
         eyre::Ok(vec![])
+    }
+
+    ///
+    /// get the current pool price by market id and returns the instantaneous pool price
+    ///
+    pub async fn get_pool_price(&self, market_id: u128) -> eyre::Result<U256> {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.url.clone());
+
+        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+
+        // Call the contract and retrieve the instantaneous pool price.
+        let CoreProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy
+            .getInstantaneousPoolPrice(market_id)
+            .call()
+            .await?;
+
+        eyre::Ok(_0)
     }
 }
