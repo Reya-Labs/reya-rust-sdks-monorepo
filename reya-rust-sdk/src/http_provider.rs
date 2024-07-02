@@ -243,10 +243,7 @@ impl HttpProvider {
                 // {
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-                // }// endcode
-                //
-                // whereby both section should be encoded
-
+                // }// endcoded
                 let trigger_price = batch_order.stop_price;
                 let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
                 encoded_inputs.clone_from(&bytes);

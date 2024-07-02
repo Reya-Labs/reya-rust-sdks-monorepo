@@ -1,0 +1,12 @@
+{
+    "account_id": 359,
+    "market_id": 1,
+    "client_order_id": "b81f8f32-81f5-4fcb-a13f-2b3991752164",
+    "order_type": "StopLoss",
+    "order_base": 0,
+    "stop_price": 3100,
+    "price_limit": 3100,
+    "signer_address": "0xF8F6B70a36f4398f0853a311dC6699Aba8333Cc1",
+    "order_nonce": "113771641377870339424531691601921",
+    "signature": "0x0xc24be803486a3292040b1e10c0b996449eebb3d88c00669b80faebbc59cad0ff4b03c941ae6715a87caa71f98c938cddd4a770893fff87314d13b253cefc6b591b"
+}
