@@ -2,10 +2,54 @@ use alloy::primitives::Address;
 use alloy::primitives::I256;
 use alloy::primitives::U256;
 use alloy::sol;
+use dotenv::dotenv;
+use std::env;
+use url::Url;
+
+///
+/// configuration struct for the sdk
+///
+///
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct SdkConfig {
+    pub order_gateway_contract_address: String,
+    pub passiv_perp_contract_address: String,
+    pub private_key: String,
+    pub rpc_sdk_url: Url,
+}
+
+pub fn load_enviroment_config() -> SdkConfig {
+    dotenv().ok();
+
+    let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
+        .expect("Order gateway contract address must be set as environment variable")
+        .to_lowercase();
+
+    let passiv_perp_contract_address = env::var("PASSIVE_PERP_GATEWAY_CONTRACT_ADDRESS")
+        .expect("Passive perp contract address must be set as environment variable")
+        .to_lowercase();
+
+    let private_key = env::var("PRIVATE_KEY")
+        .expect("Private key must be set as environment variable")
+        .to_lowercase();
+
+    let rpc_sdk_url = Url::parse(
+        env::var("RPC_SDK_URL")
+            .expect("Rpc Sdk Url must be set as environment variable")
+            .to_lowercase()
+            .as_str(),
+    );
+
+    let sdk_config = SdkConfig {
+        order_gateway_contract_address: order_gateway_contract_address,
+        passiv_perp_contract_address: passiv_perp_contract_address,
+        private_key: private_key,
+        rpc_sdk_url: rpc_sdk_url.unwrap(),
+    };
+    return sdk_config;
+}
 
 #[allow(dead_code)]
-pub static CORE_CONTRACT_ADDRESS: &str = "0xA763B6a5E09378434406C003daE6487FbbDc1a80";
-
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
@@ -38,7 +82,6 @@ pub enum OrderType {
 }
 
 /// order struct to execute orders in a batch
-//#[derive(Debug)]
 pub struct BatchOrder {
     pub account_id: u128,
     pub market_id: u128,
@@ -51,7 +94,6 @@ pub struct BatchOrder {
     pub price_limit: U256,
     pub signer_address: Address,
     pub order_nonce: U256,
-    //pub signature: String,
     pub eip712_signature: CoreProxy::EIP712Signature,
     /// tells that the order is executed sucessfully on the chain, value is only used as return state
     pub is_executed_successfully: bool,

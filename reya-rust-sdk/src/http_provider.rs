@@ -8,11 +8,8 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
-//use alloy_core::primitives::bytes;
-use alloy_primitives::bytes::Buf;
 use alloy_sol_types::SolValue;
 use eyre;
-use hex;
 use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
 
@@ -28,7 +25,7 @@ sol!(
  */
 #[derive(Debug)]
 pub struct HttpProvider {
-    url: reqwest::Url,
+    sdk_config: data_types::SdkConfig,
 }
 
 /**
@@ -51,9 +48,9 @@ impl HttpProvider {
     ///
     //  let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
     /// '''
-    pub fn new(http_url: &Url) -> HttpProvider {
+    pub fn new(sdk_config: &data_types::SdkConfig) -> HttpProvider {
         HttpProvider {
-            url: http_url.clone(),
+            sdk_config: sdk_config.clone(),
         }
     }
 
@@ -93,10 +90,13 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+        let core_proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
         let builder = core_proxy.createAccount(account_owner_address.clone());
 
         let receipt = builder.send().await?.get_receipt().await?;
@@ -173,10 +173,12 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
-        let core_proxy =
-            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
+        let core_proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
 
         // generate encoded core command input
         let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
@@ -222,10 +224,12 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
-        let core_proxy =
-            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
+        let core_proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
 
         // add all order ans signatures to the batch vector
         for batch_order in batch_orders {
@@ -256,14 +260,6 @@ impl HttpProvider {
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             });
-
-            // take from batch order struct
-            //            let signature_bytes = batch_order
-            //                .signature
-            //                .as_bytes()
-            //                .copy_to_bytes(batch_order.signature.len());
-
-            //let _signature: Bytes = Bytes::from(signature_bytes);
 
             signatures.push(batch_order.eip712_signature.clone());
         }
@@ -315,10 +311,13 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+        let core_proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
 
         // Call the contract, retrieve the account owner information.
         let CoreProxy::getAccountOwnerReturn { _0 } =
@@ -333,7 +332,7 @@ impl HttpProvider {
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
         let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
 
@@ -348,11 +347,12 @@ impl HttpProvider {
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
         // filter is not complete if we want e.g. the tx_log details of the tx_has provided
         let filter = Filter::new().address(
-            data_types::CORE_CONTRACT_ADDRESS
+            self.sdk_config
+                .order_gateway_contract_address
                 .parse::<Address>()
                 .unwrap(),
         );
@@ -371,9 +371,13 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_sdk_url.clone());
 
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+
+        let core_proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
 
         // Call the contract and retrieve the instantaneous pool price.
         let CoreProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy

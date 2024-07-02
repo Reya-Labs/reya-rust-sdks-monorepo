@@ -77,7 +77,7 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
 }
 
 async fn execute_order(
-    private_key: &String,
+    sdk_config: &data_types::SdkConfig,
     account_id: u128,
     http_provider: &http_provider::HttpProvider,
     market_id: u128,
@@ -85,7 +85,7 @@ async fn execute_order(
     order_base: &I256,
     order_price_limit: &U256,
 ) {
-    let signer: PrivateKeySigner = private_key.parse().unwrap();
+    let signer: PrivateKeySigner = sdk_config.private_key.parse().unwrap();
 
     let transaction_hash = http_provider
         .execute(
@@ -134,7 +134,7 @@ async fn main() -> eyre::Result<()> {
             Arg::new("batch-execute-orders")
                 .long("batch-execute")
                 .action(ArgAction::Set)
-                .value_names(["sdk_url", "batch_order_file"])
+                .value_names(["batch_order_file"])
                 .num_args(1..)
                 .help("Executes a batch of order from the input json order file"),
         )
@@ -142,8 +142,7 @@ async fn main() -> eyre::Result<()> {
             Arg::new("create-account")
                 .long("create-account")
                 .action(ArgAction::Set)
-                .num_args(1..)
-                .value_names(["sdk_url", "private_key"])
+                .value_names(["private_key"])
                 .help("creates an account with the provided private key"),
         );
 
@@ -157,39 +156,42 @@ async fn main() -> eyre::Result<()> {
             .map(|s| s.as_str())
             .collect();
 
-        let p1 = String::from(packages[0]); // sdk_url
-        let p2 = String::from(packages[1]); // market_id
+        let p0 = String::from(packages[0]); // market_id
 
-        let url = Url::parse(&p1).unwrap();
-        let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
+        let sdk_config = data_types::load_enviroment_config();
+        let http_provider: http_provider::HttpProvider =
+            http_provider::HttpProvider::new(&sdk_config);
 
         // get pool price for market id
-        let market_id: u128 = p2.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
-        println!("calling get pool price {} {}", url, market_id);
+        let market_id: u128 = p0.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
+        println!(
+            "calling get pool price {} {}",
+            sdk_config.rpc_sdk_url, market_id
+        );
         get_pool_price(market_id, &http_provider).await;
     } else
     // handle batche execute request
     if matches.contains_id("batch-execute-orders") {
         //
-        let private_key = env::var("PRIVATE_KEY")
-            .expect("Private key must be set as environment variable")
-            .to_lowercase();
         let packages: Vec<_> = matches
             .get_many::<String>("batch-execute-orders")
             .expect("batch_order_file")
             .map(|s| s.as_str())
             .collect();
 
-        let p1 = String::from(packages[0]); // sdk_url
-        let p2 = String::from(packages[1]); // batch_order.json
+        let p1 = String::from(packages[0]); // batch_order.json
 
-        let url = Url::parse(&p1).unwrap();
-        let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
+        let sdk_config = data_types::load_enviroment_config();
+        let _http_provider: http_provider::HttpProvider =
+            http_provider::HttpProvider::new(&sdk_config);
 
         // get the json file with batch order json struct and load
-        let batch_order_json_file: String = p2.parse().unwrap();
+        let batch_order_json_file: String = p1.parse().unwrap();
 
-        println!("Execute batch order:{} {}", url, batch_order_json_file);
+        println!(
+            "Execute batch order:{} {}",
+            sdk_config.rpc_sdk_url, batch_order_json_file
+        );
 
         let data = fs::read_to_string(batch_order_json_file) //
             .expect("Unable to read batch order json file");
@@ -226,22 +228,21 @@ async fn main() -> eyre::Result<()> {
     // handle create account request
     if matches.contains_id("create-account") {
         // create account
-        let private_key = env::var("PRIVATE_KEY")
-            .expect("Private key must be set as environment variable")
-            .to_lowercase();
-        let packages: Vec<_> = matches
-            .get_many::<String>("create-account")
-            .expect("sdk_url")
-            .map(|s| s.as_str())
-            .collect();
-        let p1 = String::from(packages[0]); // sdk_url
+        //let private_key = env::var("PRIVATE_KEY")
+        //    .expect("Private key must be set as environment variable")
+        //    .to_lowercase();
+        //let packages: Vec<_> = matches.get_many::<String>("create-account").collect();
 
-        let url = Url::parse(&p1).unwrap();
-        let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
+        let sdk_config = data_types::load_enviroment_config();
+        let http_provider: http_provider::HttpProvider =
+            http_provider::HttpProvider::new(&sdk_config);
 
-        println!("Create account:{:?} {:?}", url, private_key);
+        println!(
+            "Create account:{:?} {:?}",
+            sdk_config.rpc_sdk_url, sdk_config.private_key
+        );
 
-        create_account(&private_key, &http_provider).await;
+        create_account(&sdk_config.private_key, &http_provider).await;
     } else {
         println!("missing arguments, use --help");
         let _ = commands.print_help();
