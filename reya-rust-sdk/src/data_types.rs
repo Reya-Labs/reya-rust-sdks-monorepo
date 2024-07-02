@@ -1,6 +1,7 @@
 use alloy::primitives::Address;
 use alloy::primitives::I256;
 use alloy::primitives::U256;
+use alloy::sol;
 
 #[allow(dead_code)]
 pub static CORE_CONTRACT_ADDRESS: &str = "0xA763B6a5E09378434406C003daE6487FbbDc1a80";
@@ -8,6 +9,14 @@ pub static CORE_CONTRACT_ADDRESS: &str = "0xA763B6a5E09378434406C003daE6487FbbDc
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
+
+// Codegen from ABI file to interact with the reya core proxy contract.
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    CoreProxy,
+    "./transactions/abi/CoreProxy.json"
+);
 
 #[allow(dead_code)]
 #[repr(u8)]
@@ -29,7 +38,7 @@ pub enum OrderType {
 }
 
 /// order struct to execute orders in a batch
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct BatchOrder {
     pub account_id: u128,
     pub market_id: u128,
@@ -42,7 +51,8 @@ pub struct BatchOrder {
     pub price_limit: U256,
     pub signer_address: Address,
     pub order_nonce: U256,
-    pub signature: String,
+    //pub signature: String,
+    pub eip712_signature: CoreProxy::EIP712Signature,
     /// tells that the order is executed sucessfully on the chain, value is only used as return state
     pub is_executed_successfully: bool,
 }

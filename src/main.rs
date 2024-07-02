@@ -200,26 +200,28 @@ async fn main() -> eyre::Result<()> {
                 .expect("JSON does not have correct format.");
 
         println!("{:?}", batch_order_json);
+    /*
+    let mut batch_order_vec: Vec<data_types::BatchOrder> = vec![data_types::BatchOrder {
+        account_id: batch_order_json.account_id,
+        market_id: batch_order_json.market_id,
+        exchange_id: data_types::REYA_EXCHANGE_ID,
+        order_base: "000_000_000_000_000_000".parse().unwrap(),
+        order_type: if batch_order_json.order_type == "StopLoss" {
+            data_types::OrderType::StopLoss
+        } else {
+            data_types::OrderType::TakeProfit
+        },
+        stop_price: batch_order_json.stop_price,
+        price_limit: batch_order_json.price_limit,
+        signer_address: batch_order_json.signer_address.parse().unwrap(),
+        // todo  eip712_signature: batch_order_json
+        order_nonce: batch_order_json.order_nonce.parse().unwrap(),
+        signature: batch_order_json.signature,
+        is_executed_successfully: false,
+    }];
 
-        let mut batch_order_vec: Vec<data_types::BatchOrder> = vec![data_types::BatchOrder {
-            account_id: batch_order_json.account_id,
-            market_id: batch_order_json.market_id,
-            exchange_id: data_types::REYA_EXCHANGE_ID,
-            order_base: "000_000_000_000_000_000".parse().unwrap(),
-            order_type: if batch_order_json.order_type == "StopLoss" {
-                data_types::OrderType::StopLoss
-            } else {
-                data_types::OrderType::TakeProfit
-            },
-            stop_price: batch_order_json.stop_price,
-            price_limit: batch_order_json.price_limit,
-            signer_address: batch_order_json.signer_address.parse().unwrap(),
-            order_nonce: batch_order_json.order_nonce.parse().unwrap(),
-            signature: batch_order_json.signature,
-            is_executed_successfully: false,
-        }];
-
-        execute_batch_orders(&private_key, &http_provider, &mut batch_order_vec).await;
+    execute_batch_orders(&private_key, &http_provider, &mut batch_order_vec).await;
+    */
     } else
     // handle create account request
     if matches.contains_id("create-account") {

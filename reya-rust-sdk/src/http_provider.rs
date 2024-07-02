@@ -1,4 +1,5 @@
 use crate::data_types;
+use crate::data_types::CoreProxy;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -7,19 +8,13 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
 };
+//use alloy_core::primitives::bytes;
 use alloy_primitives::bytes::Buf;
 use alloy_sol_types::SolValue;
 use eyre;
+use hex;
 use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
 use url::Url;
-
-// Codegen from ABI file to interact with the reya core proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    CoreProxy,
-    "./transactions/abi/CoreProxy.json"
-);
 
 sol!(
     #[allow(missing_docs)]
@@ -221,7 +216,7 @@ impl HttpProvider {
     {
         //
         let mut orders: Vec<CoreProxy::ConditionalOrderDetails> = vec![];
-        let mut signatures: Vec<Bytes> = vec![];
+        let mut signatures: Vec<CoreProxy::EIP712Signature> = vec![];
 
         // create http provider
         let provider = ProviderBuilder::new()
@@ -234,7 +229,7 @@ impl HttpProvider {
 
         // add all order ans signatures to the batch vector
         for batch_order in batch_orders {
-            trace!("Batch execute orders {:?}", batch_order);
+            //trace!("Batch execute orders {}", batch_order);
 
             let mut encoded_inputs: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
@@ -263,12 +258,14 @@ impl HttpProvider {
             });
 
             // take from batch order struct
-            let signature_bytes = batch_order
-                .signature
-                .as_bytes()
-                .copy_to_bytes(batch_order.signature.len());
-            let signature: Bytes = Bytes::from(signature_bytes);
-            signatures.push(signature);
+            //            let signature_bytes = batch_order
+            //                .signature
+            //                .as_bytes()
+            //                .copy_to_bytes(batch_order.signature.len());
+
+            //let _signature: Bytes = Bytes::from(signature_bytes);
+
+            signatures.push(batch_order.eip712_signature.clone());
         }
 
         let builder = core_proxy.batchExecute(orders, signatures);
