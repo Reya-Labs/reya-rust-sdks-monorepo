@@ -260,7 +260,8 @@ impl HttpProvider {
         );
 
         // add all order ans signatures to the batch vector
-        for batch_order in batch_orders {
+        for i in 0..batch_orders.len() {
+            let batch_order: &data_types::BatchOrder = &batch_orders[i];
             let mut encoded_inputs: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
                 // generate encoded core command for the input bytes of a stop_loss order
@@ -296,7 +297,7 @@ impl HttpProvider {
         let receipt = transaction_result.get_receipt().await?;
 
         if receipt.inner.is_success() {
-            trace!("BatchExecute receipt:{:?}", receipt);
+            debug!("BatchExecute receipt:{:?}", receipt);
             let logs_result = self.get_transaction_receipt(receipt.transaction_hash).await;
             match logs_result {
                 Some(logs) => {
@@ -306,8 +307,7 @@ impl HttpProvider {
                         //
                         info!("received log, index={}, len:{}", i, log_data.data.len());
                         // todo check the log_data and make a correct discision if it is successful or not
-                        //let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
-                        //batch_order.is_executed_successfully = true;
+                        set_batch_order_state(batch_orders, i, true);
 
                         i += 1;
                     }
@@ -370,7 +370,7 @@ impl HttpProvider {
         eyre::Ok(vec![])
     }
 
-    async fn get_transaction_receipt(
+    pub async fn get_transaction_receipt(
         &self,
         _tx_hash: alloy_primitives::FixedBytes<32>,
     ) -> Option<Vec<Log>> {
@@ -421,4 +421,9 @@ impl HttpProvider {
 
         eyre::Ok(_0)
     }
+}
+
+fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
+    let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
+    batch_order.is_executed_successfully = value;
 }

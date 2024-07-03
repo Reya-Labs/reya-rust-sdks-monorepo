@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
@@ -7,7 +8,6 @@ use dotenv::dotenv;
 use eyre;
 use reya_rust_sdk::{data_types, http_provider};
 use rust_decimal::{prelude::*, Decimal};
-use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use simple_logger;
@@ -45,9 +45,22 @@ async fn create_account(private_key: &String, http_provider: &http_provider::Htt
     info!("Created account, tx hash:{:?}", transaction_hash);
 }
 
-async fn get_account_owner(account_id: u128, http_provider: &http_provider::HttpProvider) {
+async fn _get_account_owner(account_id: u128, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = http_provider.get_account_owner(account_id).await;
     info!("get account owner address,:{:?}", account_owner_address);
+}
+
+async fn get_logs(tx_hash: String, http_provider: &http_provider::HttpProvider) {
+    let tx_logs_option = http_provider
+        .get_transaction_receipt(tx_hash.parse().unwrap())
+        .await;
+
+    match tx_logs_option {
+        Some(logs) => {
+            println!("tx logs:{:?}", logs);
+        }
+        None => {}
+    }
 }
 
 async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProvider) {
@@ -85,6 +98,7 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
     }
 }
 
+#[allow(dead_code)]
 async fn execute_order(
     sdk_config: &data_types::SdkConfig,
     account_id: u128,
@@ -109,6 +123,7 @@ async fn execute_order(
     info!("Execute match order, tx hash:{:?}", transaction_hash);
 }
 
+#[allow(dead_code)]
 async fn execute_batch_orders(
     private_key: &String,
     http_provider: &http_provider::HttpProvider,
@@ -135,9 +150,17 @@ async fn main() -> eyre::Result<()> {
             Arg::new("get-pool-price")
                 .long("pool-price")
                 .action(ArgAction::Set)
-                .value_names(["sdk_url", "market_id"])
+                .value_names(["market_id"])
                 .num_args(1..)
                 .help("Gets the pool price for the required market id"),
+        )
+        .arg(
+            Arg::new("get-log")
+                .long("get-log")
+                .action(ArgAction::Set)
+                .value_names(["tx_hash"])
+                .num_args(1..)
+                .help("Gets the transaction logs by tx_hash"),
         )
         .arg(
             Arg::new("batch-execute-orders")
@@ -178,6 +201,21 @@ async fn main() -> eyre::Result<()> {
             sdk_config.rpc_url, market_id
         );
         get_pool_price(market_id, &http_provider).await;
+    } else if matches.contains_id("get-log") {
+        // create account
+        let packages: Vec<_> = matches
+            .get_many::<String>("get-log")
+            .expect("tx_hash")
+            .map(|s| s.as_str())
+            .collect();
+
+        let sdk_config = data_types::load_enviroment_config();
+        let http_provider: http_provider::HttpProvider =
+            http_provider::HttpProvider::new(&sdk_config);
+
+        let tx = String::from(packages[0]); // tx_hash
+        println!("get log{} {}", sdk_config.rpc_url, tx);
+        get_logs(tx, &http_provider).await;
     } else
     // handle batche execute request
     if matches.contains_id("batch-execute-orders") {
