@@ -1,49 +1,6 @@
 [
   {
     "type": "function",
-    "name": "getProtocolConfiguration",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct ProtocolConfiguration.Data",
-        "components": [
-          {
-            "name": "oracleManagerAddress",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "exchangePassNFTAddress",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "feeCollectorAccountId",
-            "type": "uint128",
-            "internalType": "uint128"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "pure"
-  },
-  {
-    "type": "function",
-    "name": "getLastCreatedAccountId",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "execute",
     "inputs": [
       {
@@ -141,6 +98,94 @@
             "internalType": "uint256"
           }
         ]
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "batchExecute",
+    "inputs": [
+      {
+        "name": "orders",
+        "type": "tuple[]",
+        "internalType": "struct ConditionalOrderDetails[]",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "counterpartyAccountIds",
+            "type": "uint128[]",
+            "internalType": "uint128[]"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8",
+            "internalType": "enum OrderType"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signatures",
+        "type": "tuple[]",
+        "internalType": "struct EIP712Signature[]",
+        "components": [
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
       }
     ],
     "stateMutability": "nonpayable"

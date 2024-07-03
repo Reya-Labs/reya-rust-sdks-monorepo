@@ -1,9 +1,79 @@
 use alloy::primitives::Address;
 use alloy::primitives::I256;
 use alloy::primitives::U256;
+use alloy::sol;
+use dotenv::dotenv;
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
+use std::env;
+use url::Url;
+
+pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
+///
+/// configuration struct for the sdk
+///
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct SdkConfig {
+    pub order_gateway_contract_address: String,
+    pub passiv_perp_instrument_address: String,
+    pub private_key: String,
+    pub rpc_url: Url,
+}
+
+pub fn load_enviroment_config() -> SdkConfig {
+    dotenv().ok();
+
+    let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
+        .expect("Order gateway contract address must be set as environment variable")
+        .to_lowercase();
+
+    let passiv_perp_instrument_address = env::var("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
+        .expect("Passive perp instrument address must be set as environment variable")
+        .to_lowercase();
+
+    let private_key = env::var("PRIVATE_KEY")
+        .expect("Private key must be set as environment variable")
+        .to_lowercase();
+
+    let rpc_url = Url::parse(
+        env::var("RPC_URL")
+            .expect("RPC Url must be set as environment variable")
+            .to_lowercase()
+            .as_str(),
+    );
+
+    let sdk_config = SdkConfig {
+        order_gateway_contract_address: order_gateway_contract_address,
+        passiv_perp_instrument_address: passiv_perp_instrument_address,
+        private_key: private_key,
+        rpc_url: rpc_url.unwrap(),
+    };
+    return sdk_config;
+}
 
 #[allow(dead_code)]
-pub static CORE_CONTRACT_ADDRESS: &str = "0xA763B6a5E09378434406C003daE6487FbbDc1a80";
+// exchanges
+pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
+
+// markets
+pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
+pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
+
+// Codegen from ABI file to interact with the reya order gateway proxy contract.
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    OrderGatewayProxy,
+    "./transactions/abi/OrderGatewayProxy.json"
+);
+
+// Codegen from ABI file to interact with the reya passive perp instrument proxy contract.
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    PassivePerpInstrumentProxy,
+    "./transactions/abi/PassivePerpInstrumentProxy.json"
+);
 
 #[allow(dead_code)]
 #[repr(u8)]
@@ -14,6 +84,32 @@ pub enum CommandType {
     DutchLiquidation,
     MatchOrder,
     TransferMarginAccount,
+}
+
+#[allow(dead_code)]
+#[repr(u8)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum OrderType {
+    StopLoss = 0,
+}
+
+/// order struct to execute orders in a batch
+pub struct BatchOrder {
+    pub order_id: String,
+    pub account_id: u128,
+    pub market_id: u128,
+    pub exchange_id: u128,
+    pub order_type: OrderType,
+    /// side(+/- = buy/sell) + volume i256
+    pub order_base: I256,
+    /// stop price only set when order type = stop_loss
+    pub stop_price: I256,
+    pub price_limit: U256,
+    pub signer_address: Address,
+    pub order_nonce: U256,
+    pub eip712_signature: OrderGatewayProxy::EIP712Signature,
+    /// tells that the order is executed sucessfully on the chain, value is only used as return state
+    pub is_executed_successfully: bool,
 }
 
 #[allow(dead_code)]

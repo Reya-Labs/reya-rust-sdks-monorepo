@@ -1,25 +1,18 @@
 use crate::data_types;
-
+use crate::data_types::OrderGatewayProxy;
+use crate::data_types::PassivePerpInstrumentProxy;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
     rpc::types::eth::Filter,
+    rpc::types::Log,
     signers::local::PrivateKeySigner,
     sol,
 };
 use alloy_sol_types::SolValue;
 use eyre;
-use tracing::{debug, info, trace}; //, error, info, span, warn, Level};
-use url::Url;
-
-// Codegen from ABI file to interact with the reya core proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    CoreProxy,
-    "./transactions/abi/CoreProxy.json"
-);
+use tracing::*;
 
 sol!(
     #[allow(missing_docs)]
@@ -33,7 +26,7 @@ sol!(
  */
 #[derive(Debug)]
 pub struct HttpProvider {
-    url: reqwest::Url,
+    sdk_config: data_types::SdkConfig,
 }
 
 /**
@@ -56,9 +49,9 @@ impl HttpProvider {
     ///
     //  let http_provider: http_provider::HttpProvider = http_provider::HttpProvider::new(&url);
     /// '''
-    pub fn new(http_url: &Url) -> HttpProvider {
+    pub fn new(sdk_config: &data_types::SdkConfig) -> HttpProvider {
         HttpProvider {
-            url: http_url.clone(),
+            sdk_config: sdk_config.clone(),
         }
     }
 
@@ -98,11 +91,14 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
-        let builder = core_proxy.createAccount(account_owner_address.clone());
+        let proxy = OrderGatewayProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
+        let builder = proxy.createAccount(account_owner_address.clone());
 
         let receipt = builder.send().await?.get_receipt().await?;
         if receipt.inner.is_success() {
@@ -141,8 +137,6 @@ impl HttpProvider {
     ///
     /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
-    /// let transaction_hash = http_provider
-    ///
     /// let market_id = 1u128;
     ///
     /// let exchange_id = 1u128;
@@ -178,31 +172,30 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy =
-            CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider.clone());
+        let proxy = OrderGatewayProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
 
         // generate encoded core command input
-
         let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
-
-        let counterparty_account_ids: Vec<u128> = vec![2u128];
-
-        let base_price_counterparties_encoded =
+        let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+        let base_price_counterparties_encoded: Vec<u8> =
             (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
         // construct core proxy command struct
         let command_type = data_types::CommandType::MatchOrder;
 
-        let command = CoreProxy::Command {
+        let command = OrderGatewayProxy::Command {
             commandType: command_type as u8,
             inputs: Bytes::from(base_price_counterparties_encoded),
             marketId: market_id,
             exchangeId: exchange_id,
         };
 
-        let builder = core_proxy.execute(account_id, vec![command]);
+        let builder = proxy.execute(account_id, vec![command]);
         let transaction_result = builder.send().await?;
         let receipt = transaction_result.get_receipt().await?;
 
@@ -210,6 +203,119 @@ impl HttpProvider {
             debug!("Execute receipt:{:?}", receipt);
         }
 
+        eyre::Ok(receipt.transaction_hash)
+    }
+
+    /// Executes a batch of orders and will return a transaction hash when the batch is executed.
+    ///
+    /// Incase transaction hash is return it does not mean all orders in the batch are successfully executed, these
+    ///
+    /// details are provided in the batch orders vector with the flag is_executed_successfully = true.
+    ///
+    /// Needs the following parameters:
+    ///
+    /// 1: signer,
+    ///
+    /// 2: batch_orders, vector with number of order to execute
+    ///
+    /// # Examples
+    /// '''
+    /// use crate::reya_network::http_provider;
+    ///
+    /// use alloy::{
+    ///    primitives::{I256, U256},
+    ///
+    ///    signers::wallet::PrivateKeySigner,
+    /// };
+    ///
+    ///     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
+    ///
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    ///
+    /// let mut batch_orders:Vec<data_types::BatchOrder> = make_batch();
+    ///
+    /// let transaction_hash = http_provider.execute_batch(signer, batch_orders).await;
+    ///
+    /// '''
+    ///
+    pub async fn execute_batch(
+        &self,
+        signer: PrivateKeySigner,
+        batch_orders: &mut Vec<data_types::BatchOrder>,
+    ) -> eyre::Result<B256> // return the transaction hash
+    {
+        //
+        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(EthereumWallet::from(signer))
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = OrderGatewayProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
+
+        // add all order ans signatures to the batch vector
+        for i in 0..batch_orders.len() {
+            let batch_order: &data_types::BatchOrder = &batch_orders[i];
+            let mut encoded_inputs: Vec<u8> = Vec::new();
+            if batch_order.order_type == data_types::OrderType::StopLoss {
+                // generate encoded core command for the input bytes of a stop_loss order
+                // The input byte structure is:
+                // {
+                //     trigger_price, // stop_price!
+                //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+                // }// endcoded
+                let trigger_price = batch_order.stop_price;
+                let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+                encoded_inputs.clone_from(&bytes);
+            }
+
+            let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+
+            orders.push(OrderGatewayProxy::ConditionalOrderDetails {
+                accountId: batch_order.account_id,
+                marketId: batch_order.market_id,
+                exchangeId: batch_order.exchange_id,
+                counterpartyAccountIds: counterparty_account_ids.clone(),
+                orderType: batch_order.order_type as u8,
+                inputs: Bytes::from(encoded_inputs),
+                signer: batch_order.signer_address,
+                nonce: batch_order.order_nonce,
+            });
+
+            signatures.push(batch_order.eip712_signature.clone());
+        }
+
+        let builder = proxy.batchExecute(orders, signatures);
+        let transaction_result = builder.send().await?;
+
+        let receipt = transaction_result.get_receipt().await?;
+
+        if receipt.inner.is_success() {
+            debug!("BatchExecute receipt:{:?}", receipt);
+            let logs_result = self.get_transaction_receipt(receipt.transaction_hash).await;
+            match logs_result {
+                Some(logs) => {
+                    let mut i = 0;
+                    for log in logs {
+                        let log_data = log.data();
+                        //
+                        info!("received log, index={}, len:{}", i, log_data.data.len());
+                        // todo check the log_data and make a correct discision if it is successful or not
+                        set_batch_order_state(batch_orders, i, true);
+
+                        i += 1;
+                    }
+                }
+                None => {}
+            }
+        }
+        //
         eyre::Ok(receipt.transaction_hash)
     }
 
@@ -234,14 +340,17 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(data_types::CORE_CONTRACT_ADDRESS.parse()?, provider);
+        let proxy = OrderGatewayProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
 
         // Call the contract, retrieve the account owner information.
-        let CoreProxy::getAccountOwnerReturn { _0 } =
-            core_proxy.getAccountOwner(account_id).call().await?;
+        let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
+            proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
     }
@@ -252,7 +361,7 @@ impl HttpProvider {
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
 
@@ -261,25 +370,60 @@ impl HttpProvider {
         eyre::Ok(vec![])
     }
 
-    async fn get_transaction_receipt(
+    pub async fn get_transaction_receipt(
         &self,
         _tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> eyre::Result<Vec<u128>> {
+    ) -> Option<Vec<Log>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // filter is not complete if we want e.g. the tx_log details of the tx_has provided
         let filter = Filter::new().address(
-            data_types::CORE_CONTRACT_ADDRESS
+            self.sdk_config
+                .order_gateway_contract_address
                 .parse::<Address>()
                 .unwrap(),
         );
 
-        let transaction_receipt = provider.get_logs(&filter).await;
+        let transaction_receipt_result = provider.get_logs(&filter).await;
 
-        info!("Transaction receipt:{:?}", Some(transaction_receipt));
+        match transaction_receipt_result {
+            Ok(transaction_receipt) => {
+                info!("Transaction receipt:{:?}", transaction_receipt);
+                return Some(transaction_receipt);
+            }
+            Err(err) => {
+                error!("Failed to get logs:{:?}", err);
+            }
+        }
 
-        eyre::Ok(vec![])
+        return None;
     }
+
+    ///
+    /// get the current pool price by market id and returns the instantaneous pool price
+    ///
+    pub async fn get_pool_price(&self, market_id: u128) -> eyre::Result<U256> {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = PassivePerpInstrumentProxy::new(
+            self.sdk_config.passiv_perp_instrument_address.parse()?,
+            provider,
+        );
+
+        // Call the contract and retrieve the instantaneous pool price.
+        let PassivePerpInstrumentProxy::getInstantaneousPoolPriceReturn { _0 } =
+            proxy.getInstantaneousPoolPrice(market_id).call().await?;
+
+        eyre::Ok(_0)
+    }
+}
+
+fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
+    let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
+    batch_order.is_executed_successfully = value;
 }
