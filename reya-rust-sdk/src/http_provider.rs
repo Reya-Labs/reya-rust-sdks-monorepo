@@ -300,7 +300,7 @@ impl HttpProvider {
             debug!("BatchExecute receipt:{:?}", receipt);
         }
 
-        // todo: consider returning a new list of batch orders with execution states to the client
+        // todo: p2: consider returning a new list of batch orders with execution states to the client
         // alongside the receipt instead of manipulating the list in memory
         let logs = receipt.inner.logs();
         self.parse_execute_batch_events(batch_orders, logs);
@@ -313,15 +313,15 @@ impl HttpProvider {
         batch_orders: &mut Vec<data_types::BatchOrder>,
         logs: &[Log],
     ) {
-        // todo: ensure length of logs is the same as length of batch orders
-        // todo: does this function need to have &self as input?
-        // todo: instead of using counter (i) we can actually extract the index by decoding log data as well
+        // todo: p2: ensure length of logs is the same as length of batch orders
+        // todo: p2: does this function need to have &self as input?
+        // todo: p2: instead of using counter (i) we can actually extract the index by decoding log data as well
         let mut i = 0;
         for log in logs {
             let log_data = log.data();
             let event_identifier = log_data.topics()[0];
 
-            // todo: replace with the actual identifier
+            // todo: p1: replace with the actual identifier
             let success_event_identifier = B256::from([0u8; 32]);
 
             if event_identifier == success_event_identifier {
@@ -408,7 +408,7 @@ impl HttpProvider {
 }
 
 fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
-    // todo: consider performing this work in the stop loss engine by parsing logs from
+    // todo: p2: consider performing this work in the stop loss engine by parsing logs from
     // batch order execution receipt
     let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
     batch_order.is_executed_successfully = value;
