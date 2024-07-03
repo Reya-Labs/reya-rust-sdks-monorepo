@@ -298,22 +298,7 @@ impl HttpProvider {
 
         if receipt.inner.is_success() {
             debug!("BatchExecute receipt:{:?}", receipt);
-            let logs_result = self.get_transaction_receipt(receipt.transaction_hash).await;
-            match logs_result {
-                Some(logs) => {
-                    let mut i = 0;
-                    for log in logs {
-                        let log_data = log.data();
-                        //
-                        info!("received log, index={}, len:{}", i, log_data.data.len());
-                        // todo check the log_data and make a correct discision if it is successful or not
-                        set_batch_order_state(batch_orders, i, true);
-
-                        i += 1;
-                    }
-                }
-                None => {}
-            }
+            let logs_result = receipt.inner.logs();
         }
         //
         eyre::Ok(receipt.transaction_hash)
@@ -368,37 +353,6 @@ impl HttpProvider {
         info!("Transaction reponse:{:?}", Some(transaction_response));
 
         eyre::Ok(vec![])
-    }
-
-    pub async fn get_transaction_receipt(
-        &self,
-        _tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> Option<Vec<Log>> {
-        let provider = ProviderBuilder::new()
-            .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
-
-        // filter is not complete if we want e.g. the tx_log details of the tx_has provided
-        let filter = Filter::new().address(
-            self.sdk_config
-                .order_gateway_contract_address
-                .parse::<Address>()
-                .unwrap(),
-        );
-
-        let transaction_receipt_result = provider.get_logs(&filter).await;
-
-        match transaction_receipt_result {
-            Ok(transaction_receipt) => {
-                info!("Transaction receipt:{:?}", transaction_receipt);
-                return Some(transaction_receipt);
-            }
-            Err(err) => {
-                error!("Failed to get logs:{:?}", err);
-            }
-        }
-
-        return None;
     }
 
     ///

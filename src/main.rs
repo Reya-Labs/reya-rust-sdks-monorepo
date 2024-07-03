@@ -50,19 +50,6 @@ async fn _get_account_owner(account_id: u128, http_provider: &http_provider::Htt
     info!("get account owner address,:{:?}", account_owner_address);
 }
 
-async fn get_logs(tx_hash: String, http_provider: &http_provider::HttpProvider) {
-    let tx_logs_option = http_provider
-        .get_transaction_receipt(tx_hash.parse().unwrap())
-        .await;
-
-    match tx_logs_option {
-        Some(logs) => {
-            println!("tx logs:{:?}", logs);
-        }
-        None => {}
-    }
-}
-
 async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProvider) {
     let pool_price_result = http_provider.get_pool_price(market_id).await;
     match pool_price_result {
@@ -215,7 +202,6 @@ async fn main() -> eyre::Result<()> {
 
         let tx = String::from(packages[0]); // tx_hash
         println!("get log{} {}", sdk_config.rpc_url, tx);
-        get_logs(tx, &http_provider).await;
     } else
     // handle batche execute request
     if matches.contains_id("batch-execute-orders") {
