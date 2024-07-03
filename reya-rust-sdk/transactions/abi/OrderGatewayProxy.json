@@ -227,24 +227,5 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getInstantaneousPoolPrice",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "UD60x18"
-      }
-    ],
-    "stateMutability": "nonpayable"
   }
 ]

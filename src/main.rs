@@ -10,11 +10,11 @@ use rust_decimal::{prelude::*, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use simple_logger;
-use std::env;
+//use std::env;
 use std::fs;
 use tokio;
 use tracing::*;
-use url::Url;
+//use url::Url;
 
 /// order struct to execute orders in a batch
 #[derive(Debug, Serialize, Deserialize)]

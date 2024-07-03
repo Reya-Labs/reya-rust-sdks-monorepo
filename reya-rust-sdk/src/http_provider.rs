@@ -1,5 +1,6 @@
 use crate::data_types;
 use crate::data_types::OrderGatewayProxy;
+use crate::data_types::PassivePerpInstrumentProxy;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -92,11 +93,11 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = OrderGatewayProxy::new(
+        let proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
-        let builder = core_proxy.createAccount(account_owner_address.clone());
+        let builder = proxy.createAccount(account_owner_address.clone());
 
         let receipt = builder.send().await?.get_receipt().await?;
         if receipt.inner.is_success() {
@@ -172,7 +173,7 @@ impl HttpProvider {
             .wallet(EthereumWallet::from(signer))
             .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy = OrderGatewayProxy::new(
+        let proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider.clone(),
         );
@@ -193,7 +194,7 @@ impl HttpProvider {
             exchangeId: exchange_id,
         };
 
-        let builder = core_proxy.execute(account_id, vec![command]);
+        let builder = proxy.execute(account_id, vec![command]);
         let transaction_result = builder.send().await?;
         let receipt = transaction_result.get_receipt().await?;
 
@@ -252,7 +253,7 @@ impl HttpProvider {
             .wallet(EthereumWallet::from(signer))
             .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy = OrderGatewayProxy::new(
+        let proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider.clone(),
         );
@@ -288,7 +289,7 @@ impl HttpProvider {
             signatures.push(batch_order.eip712_signature.clone());
         }
 
-        let builder = core_proxy.batchExecute(orders, signatures);
+        let builder = proxy.batchExecute(orders, signatures);
         let transaction_result = builder.send().await?;
 
         let receipt = transaction_result.get_receipt().await?;
@@ -338,14 +339,14 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = OrderGatewayProxy::new(
+        let proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
 
         // Call the contract, retrieve the account owner information.
         let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
-            core_proxy.getAccountOwner(account_id).call().await?;
+            proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
     }
@@ -397,16 +398,14 @@ impl HttpProvider {
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
+        let proxy = PassivePerpInstrumentProxy::new(
+            self.sdk_config.passiv_perp_instrument_address.parse()?,
             provider,
         );
 
         // Call the contract and retrieve the instantaneous pool price.
-        let OrderGatewayProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy
-            .getInstantaneousPoolPrice(market_id)
-            .call()
-            .await?;
+        let PassivePerpInstrumentProxy::getInstantaneousPoolPriceReturn { _0 } =
+            proxy.getInstantaneousPoolPrice(market_id).call().await?;
 
         eyre::Ok(_0)
     }

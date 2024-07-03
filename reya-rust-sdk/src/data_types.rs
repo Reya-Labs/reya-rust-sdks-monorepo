@@ -56,12 +56,20 @@ pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
 
-// Codegen from ABI file to interact with the reya core proxy contract.
+// Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     OrderGatewayProxy,
     "./transactions/abi/OrderGatewayProxy.json"
+);
+
+// Codegen from ABI file to interact with the reya passive perp instrument proxy contract.
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    PassivePerpInstrumentProxy,
+    "./transactions/abi/PassivePerpInstrumentProxy.json"
 );
 
 #[allow(dead_code)]
