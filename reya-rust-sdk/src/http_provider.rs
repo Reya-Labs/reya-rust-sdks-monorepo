@@ -6,12 +6,13 @@ use alloy::{
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
     rpc::types::eth::Filter,
+    rpc::types::Log,
     signers::local::PrivateKeySigner,
     sol,
 };
 use alloy_sol_types::SolValue;
 use eyre;
-use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
+use tracing::*;
 
 sol!(
     #[allow(missing_docs)]
@@ -295,20 +296,23 @@ impl HttpProvider {
         let receipt = transaction_result.get_receipt().await?;
 
         if receipt.inner.is_success() {
-            debug!("BatchExecute receipt:{:?}", receipt);
-            let data: Bytes = Bytes::new();
-            let validate: bool = true;
-            let batch_execute_returns = builder.decode_output(data, validate);
-            match batch_execute_returns {
-                Ok(outputs) => {
-                    // get batch  output is succesfull. Check the individual output array of bytes to check of all orders are ok
-                    for _output in outputs.outputs {
-                        //if out
+            trace!("BatchExecute receipt:{:?}", receipt);
+            let logs_result = self.get_transaction_receipt(receipt.transaction_hash).await;
+            match logs_result {
+                Some(logs) => {
+                    let mut i = 0;
+                    for log in logs {
+                        let log_data = log.data();
+                        //
+                        info!("received log, index={}, len:{}", i, log_data.data.len());
+                        // todo check the log_data and make a correct discision if it is successful or not
+                        //let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
+                        //batch_order.is_executed_successfully = true;
+
+                        i += 1;
                     }
                 }
-                Err(err) => {
-                    error!("Failed to get outputs from transaction:{:?}", err);
-                }
+                None => {}
             }
         }
         //
@@ -369,7 +373,7 @@ impl HttpProvider {
     async fn get_transaction_receipt(
         &self,
         _tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> eyre::Result<Vec<u128>> {
+    ) -> Option<Vec<Log>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
@@ -382,11 +386,19 @@ impl HttpProvider {
                 .unwrap(),
         );
 
-        let transaction_receipt = provider.get_logs(&filter).await;
+        let transaction_receipt_result = provider.get_logs(&filter).await;
 
-        info!("Transaction receipt:{:?}", Some(transaction_receipt));
+        match transaction_receipt_result {
+            Ok(transaction_receipt) => {
+                info!("Transaction receipt:{:?}", transaction_receipt);
+                return Some(transaction_receipt);
+            }
+            Err(err) => {
+                error!("Failed to get logs:{:?}", err);
+            }
+        }
 
-        eyre::Ok(vec![])
+        return None;
     }
 
     ///

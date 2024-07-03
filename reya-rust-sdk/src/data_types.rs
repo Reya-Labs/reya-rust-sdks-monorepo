@@ -3,9 +3,12 @@ use alloy::primitives::I256;
 use alloy::primitives::U256;
 use alloy::sol;
 use dotenv::dotenv;
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use std::env;
 use url::Url;
 
+pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 ///
 /// configuration struct for the sdk
 ///
@@ -92,6 +95,7 @@ pub enum OrderType {
 
 /// order struct to execute orders in a batch
 pub struct BatchOrder {
+    pub order_id: String,
     pub account_id: u128,
     pub market_id: u128,
     pub exchange_id: u128,

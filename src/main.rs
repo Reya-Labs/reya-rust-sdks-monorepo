@@ -7,6 +7,7 @@ use dotenv::dotenv;
 use eyre;
 use reya_rust_sdk::{data_types, http_provider};
 use rust_decimal::{prelude::*, Decimal};
+use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use simple_logger;
@@ -62,8 +63,16 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
             let price_result = Decimal::from_str(&pool_price_str);
             match price_result {
                 Ok(p) => {
-                    let divider = Decimal::new(1, 18);
-                    info!("Get pool price:{:?}", p / divider);
+                    debug!(
+                        "devider:{:?}, raw price:{:?}",
+                        data_types::PRICE_MULTIPLIER,
+                        p
+                    );
+                    info!(
+                        "Get pool price market:{}, price:{:?}",
+                        market_id,
+                        p / data_types::PRICE_MULTIPLIER
+                    );
                 }
                 Err(err) => {
                     error!("{:?}", err);
@@ -115,7 +124,7 @@ async fn execute_batch_orders(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // default warn level logging
-    simple_logger::init_with_level(log::Level::Info).unwrap();
+    simple_logger::init_with_level(log::Level::Debug).unwrap();
 
     dotenv().ok();
     // sdk url: https://rpc.reya.network
