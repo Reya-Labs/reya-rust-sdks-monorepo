@@ -1,6 +1,7 @@
 use crate::data_types;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
+use alloy::rpc::types::TransactionReceipt;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -242,7 +243,7 @@ impl HttpProvider {
         &self,
         signer: PrivateKeySigner,
         batch_orders: &mut Vec<data_types::BatchOrder>,
-    ) -> eyre::Result<B256> // return the transaction hash
+    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
         //
         let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
@@ -296,12 +297,9 @@ impl HttpProvider {
 
         let receipt = transaction_result.get_receipt().await?;
 
-        if receipt.inner.is_success() {
-            debug!("BatchExecute receipt:{:?}", receipt);
-            let logs_result = receipt.inner.logs();
-        }
-        //
-        eyre::Ok(receipt.transaction_hash)
+        debug!("BatchExecute receipt:{:?}", receipt);
+
+        eyre::Ok(receipt)
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
