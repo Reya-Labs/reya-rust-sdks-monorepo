@@ -6,7 +6,6 @@ use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::eth::Filter,
     rpc::types::Log,
     signers::local::PrivateKeySigner,
     sol,
@@ -297,9 +296,42 @@ impl HttpProvider {
 
         let receipt = transaction_result.get_receipt().await?;
 
-        debug!("BatchExecute receipt:{:?}", receipt);
+        if receipt.inner.is_success() {
+            debug!("BatchExecute receipt:{:?}", receipt);
+        }
+
+        // todo: consider returning a new list of batch orders with execution states to the client
+        // alongside the receipt instead of manipulating the list in memory
+        let logs = receipt.inner.logs();
+        self.parse_execute_batch_events(batch_orders, logs);
 
         eyre::Ok(receipt)
+    }
+
+    fn parse_execute_batch_events(
+        &self,
+        batch_orders: &mut Vec<data_types::BatchOrder>,
+        logs: &[Log],
+    ) {
+        // todo: ensure length of logs is the same as length of batch orders
+        // todo: does this function need to have &self as input?
+        // todo: instead of using counter (i) we can actually extract the index by decoding log data as well
+        let mut i = 0;
+        for log in logs {
+            let log_data = log.data();
+            let event_identifier = log_data.topics()[0];
+
+            // todo: replace with the actual identifier
+            let success_event_identifier = B256::from([0u8; 32]);
+
+            if event_identifier == success_event_identifier {
+                set_batch_order_state(batch_orders, i, true);
+            } else {
+                set_batch_order_state(batch_orders, i, false);
+            }
+
+            i += 1;
+        }
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -376,6 +408,8 @@ impl HttpProvider {
 }
 
 fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
+    // todo: consider performing this work in the stop loss engine by parsing logs from
+    // batch order execution receipt
     let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
     batch_order.is_executed_successfully = value;
 }
