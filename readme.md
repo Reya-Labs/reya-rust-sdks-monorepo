@@ -22,4 +22,4 @@ cargo doc --no-deps
 ## Deployments
 In order to explore the reya core proxy contract, refer to the following cannon package link: 
 
-https://usecannon.com/packages/reya-omnibus/1.0.0/1729-main/interact/reya-omnibus/CoreProxy/0xA763B6a5E09378434406C003daE6487FbbDc1a80
+https://usecannon.com/packages/reya-omnibus/1.0.0/1729-main/interact/reya-omnibus/OrderGatewayProxy/0xA763B6a5E09378434406C003daE6487FbbDc1a80

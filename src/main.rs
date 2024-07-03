@@ -166,7 +166,7 @@ async fn main() -> eyre::Result<()> {
         let market_id: u128 = p0.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
         println!(
             "calling get pool price {} {}",
-            sdk_config.rpc_sdk_url, market_id
+            sdk_config.rpc_url, market_id
         );
         get_pool_price(market_id, &http_provider).await;
     } else
@@ -190,7 +190,7 @@ async fn main() -> eyre::Result<()> {
 
         println!(
             "Execute batch order:{} {}",
-            sdk_config.rpc_sdk_url, batch_order_json_file
+            sdk_config.rpc_url, batch_order_json_file
         );
 
         let data = fs::read_to_string(batch_order_json_file) //
@@ -239,7 +239,7 @@ async fn main() -> eyre::Result<()> {
 
         println!(
             "Create account:{:?} {:?}",
-            sdk_config.rpc_sdk_url, sdk_config.private_key
+            sdk_config.rpc_url, sdk_config.private_key
         );
 
         create_account(&sdk_config.private_key, &http_provider).await;

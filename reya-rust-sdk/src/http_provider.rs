@@ -1,5 +1,5 @@
 use crate::data_types;
-use crate::data_types::CoreProxy;
+use crate::data_types::OrderGatewayProxy;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -11,7 +11,6 @@ use alloy::{
 use alloy_sol_types::SolValue;
 use eyre;
 use tracing::{debug, error, info, trace}; //, error, info, span, warn, Level};
-use url::Url;
 
 sol!(
     #[allow(missing_docs)]
@@ -90,10 +89,10 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(
+        let core_proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
@@ -136,8 +135,6 @@ impl HttpProvider {
     ///
     /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
-    /// let transaction_hash = http_provider
-    ///
     /// let market_id = 1u128;
     ///
     /// let exchange_id = 1u128;
@@ -173,9 +170,9 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy = CoreProxy::new(
+        let core_proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider.clone(),
         );
@@ -189,7 +186,7 @@ impl HttpProvider {
         // construct core proxy command struct
         let command_type = data_types::CommandType::MatchOrder;
 
-        let command = CoreProxy::Command {
+        let command = OrderGatewayProxy::Command {
             commandType: command_type as u8,
             inputs: Bytes::from(base_price_counterparties_encoded),
             marketId: market_id,
@@ -207,8 +204,37 @@ impl HttpProvider {
         eyre::Ok(receipt.transaction_hash)
     }
 
+    /// Executes a batch of orders and will return a transaction hash when the batch is executed.
     ///
-    /// execute a batch of orders
+    /// Incase transaction hash is return it does not mean all orders in the batch are successfully executed, these
+    ///
+    /// details are provided in the batch orders vector with the flag is_executed_successfully = true.
+    ///
+    /// Needs the following parameters:
+    ///
+    /// 1: signer,
+    ///
+    /// 2: batch_orders, vector with number of order to execute
+    ///
+    /// # Examples
+    /// '''
+    /// use crate::reya_network::http_provider;
+    ///
+    /// use alloy::{
+    ///    primitives::{I256, U256},
+    ///
+    ///    signers::wallet::PrivateKeySigner,
+    /// };
+    ///
+    ///     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
+    ///
+    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    ///
+    /// let mut batch_orders:Vec<data_types::BatchOrder> = make_batch();
+    ///
+    /// let transaction_hash = http_provider.execute_batch(signer, batch_orders).await;
+    ///
+    /// '''
     ///
     pub async fn execute_batch(
         &self,
@@ -217,24 +243,22 @@ impl HttpProvider {
     ) -> eyre::Result<B256> // return the transaction hash
     {
         //
-        let mut orders: Vec<CoreProxy::ConditionalOrderDetails> = vec![];
-        let mut signatures: Vec<CoreProxy::EIP712Signature> = vec![];
+        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
 
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(EthereumWallet::from(signer))
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
-        let core_proxy = CoreProxy::new(
+        let core_proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider.clone(),
         );
 
         // add all order ans signatures to the batch vector
         for batch_order in batch_orders {
-            //trace!("Batch execute orders {}", batch_order);
-
             let mut encoded_inputs: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
                 // generate encoded core command for the input bytes of a stop_loss order
@@ -250,7 +274,7 @@ impl HttpProvider {
 
             let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
 
-            orders.push(CoreProxy::ConditionalOrderDetails {
+            orders.push(OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
                 marketId: batch_order.market_id,
                 exchangeId: batch_order.exchange_id,
@@ -311,16 +335,16 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let core_proxy = CoreProxy::new(
+        let core_proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
 
         // Call the contract, retrieve the account owner information.
-        let CoreProxy::getAccountOwnerReturn { _0 } =
+        let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
             core_proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
@@ -332,7 +356,7 @@ impl HttpProvider {
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
 
@@ -347,7 +371,7 @@ impl HttpProvider {
     ) -> eyre::Result<Vec<u128>> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
         // filter is not complete if we want e.g. the tx_log details of the tx_has provided
         let filter = Filter::new().address(
@@ -371,16 +395,15 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_sdk_url.clone());
+            .on_http(self.sdk_config.rpc_url.clone());
 
-
-        let core_proxy = CoreProxy::new(
+        let core_proxy = OrderGatewayProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
 
         // Call the contract and retrieve the instantaneous pool price.
-        let CoreProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy
+        let OrderGatewayProxy::getInstantaneousPoolPriceReturn { _0 } = core_proxy
             .getInstantaneousPoolPrice(market_id)
             .call()
             .await?;

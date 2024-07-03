@@ -9,13 +9,12 @@ use url::Url;
 ///
 /// configuration struct for the sdk
 ///
-///
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct SdkConfig {
     pub order_gateway_contract_address: String,
-    pub passiv_perp_contract_address: String,
+    pub passiv_perp_instrument_address: String,
     pub private_key: String,
-    pub rpc_sdk_url: Url,
+    pub rpc_url: Url,
 }
 
 pub fn load_enviroment_config() -> SdkConfig {
@@ -25,32 +24,35 @@ pub fn load_enviroment_config() -> SdkConfig {
         .expect("Order gateway contract address must be set as environment variable")
         .to_lowercase();
 
-    let passiv_perp_contract_address = env::var("PASSIVE_PERP_GATEWAY_CONTRACT_ADDRESS")
-        .expect("Passive perp contract address must be set as environment variable")
+    let passiv_perp_instrument_address = env::var("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
+        .expect("Passive perp instrument address must be set as environment variable")
         .to_lowercase();
 
     let private_key = env::var("PRIVATE_KEY")
         .expect("Private key must be set as environment variable")
         .to_lowercase();
 
-    let rpc_sdk_url = Url::parse(
-        env::var("RPC_SDK_URL")
-            .expect("Rpc Sdk Url must be set as environment variable")
+    let rpc_url = Url::parse(
+        env::var("RPC_URL")
+            .expect("RPC Url must be set as environment variable")
             .to_lowercase()
             .as_str(),
     );
 
     let sdk_config = SdkConfig {
         order_gateway_contract_address: order_gateway_contract_address,
-        passiv_perp_contract_address: passiv_perp_contract_address,
+        passiv_perp_instrument_address: passiv_perp_instrument_address,
         private_key: private_key,
-        rpc_sdk_url: rpc_sdk_url.unwrap(),
+        rpc_url: rpc_url.unwrap(),
     };
     return sdk_config;
 }
 
 #[allow(dead_code)]
+// exchanges
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
+
+// markets
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
 
@@ -58,8 +60,8 @@ pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
-    CoreProxy,
-    "./transactions/abi/CoreProxy.json"
+    OrderGatewayProxy,
+    "./transactions/abi/OrderGatewayProxy.json"
 );
 
 #[allow(dead_code)]
@@ -78,7 +80,6 @@ pub enum CommandType {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum OrderType {
     StopLoss = 0,
-    TakeProfit,
 }
 
 /// order struct to execute orders in a batch
@@ -94,7 +95,7 @@ pub struct BatchOrder {
     pub price_limit: U256,
     pub signer_address: Address,
     pub order_nonce: U256,
-    pub eip712_signature: CoreProxy::EIP712Signature,
+    pub eip712_signature: OrderGatewayProxy::EIP712Signature,
     /// tells that the order is executed sucessfully on the chain, value is only used as return state
     pub is_executed_successfully: bool,
 }
