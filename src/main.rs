@@ -1,3 +1,4 @@
+use alloy::rpc::types::TransactionReceipt;
 #[allow(dead_code)]
 use alloy::{
     primitives::{address, I256, U256},
@@ -6,7 +7,10 @@ use alloy::{
 use clap::*;
 use dotenv::dotenv;
 use eyre;
-use reya_rust_sdk::{data_types, http_provider};
+use reya_rust_sdk::{
+    data_types,
+    http_provider::{self, extract_execute_batch_outputs},
+};
 use rust_decimal::{prelude::*, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -83,6 +87,11 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
             error!("Failed to retreive pool price {:?}", err);
         }
     }
+}
+
+async fn get_execute_batch_receipt_logs(batch_execute_receipt: &TransactionReceipt) {
+    let result = extract_execute_batch_outputs(batch_execute_receipt);
+    info!("{:?}", result);
 }
 
 #[allow(dead_code)]
