@@ -11,6 +11,7 @@ use alloy::{
     sol,
     sol_types::{ContractError, SolEvent},
 };
+use alloy_primitives::hex::FromHex;
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
 use eyre::WrapErr;
