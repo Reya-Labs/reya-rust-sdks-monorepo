@@ -426,7 +426,7 @@ pub fn extract_execute_batch_outputs(
 
                 let reason_string = failed_order_message.reason.clone();
 
-                let bytes: [u8; 4] = FromHex::from_hex(reason_string.get().trim_matches('"'))?;
+                let bytes: [u8; 4] = FromHex::from_hex(reason_string.trim_matches('"')).unwrap();
 
                 use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
 
