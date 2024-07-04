@@ -412,7 +412,6 @@ pub fn extract_execute_batch_outputs(
         let topic0 = log_data.topics()[0];
 
         match topic0 {
-            // todo: check if we need ConditionalOrder struct instead of tuple type
             // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
             OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
