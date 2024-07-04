@@ -241,7 +241,7 @@ impl HttpProvider {
     pub async fn execute_batch(
         &self,
         signer: PrivateKeySigner,
-        batch_orders: &mut Vec<data_types::BatchOrder>,
+        batch_orders: Vec<data_types::BatchOrder>,
     ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
         //
@@ -300,38 +300,7 @@ impl HttpProvider {
             debug!("BatchExecute receipt:{:?}", receipt);
         }
 
-        // todo: p2: consider returning a new list of batch orders with execution states to the client
-        // alongside the receipt instead of manipulating the list in memory
-        let logs = receipt.inner.logs();
-        self.parse_execute_batch_events(batch_orders, logs);
-
         eyre::Ok(receipt)
-    }
-
-    fn parse_execute_batch_events(
-        &self,
-        batch_orders: &mut Vec<data_types::BatchOrder>,
-        logs: &[Log],
-    ) {
-        // todo: p2: ensure length of logs is the same as length of batch orders
-        // todo: p2: does this function need to have &self as input?
-        // todo: p2: instead of using counter (i) we can actually extract the index by decoding log data as well
-        let mut i = 0;
-        for log in logs {
-            let log_data = log.data();
-            let event_identifier = log_data.topics()[0];
-
-            // todo: p1: replace with the actual identifier
-            let success_event_identifier = B256::from([0u8; 32]);
-
-            if event_identifier == success_event_identifier {
-                set_batch_order_state(batch_orders, i, true);
-            } else {
-                set_batch_order_state(batch_orders, i, false);
-            }
-
-            i += 1;
-        }
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -407,9 +376,36 @@ impl HttpProvider {
     }
 }
 
-fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
-    // todo: p2: consider performing this work in the stop loss engine by parsing logs from
-    // batch order execution receipt
-    let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
-    batch_order.is_executed_successfully = value;
+pub fn extract_execute_batch_outputs(batch_execute_receipt: &TransactionReceipt) -> Vec<U256> {
+    let logs = batch_execute_receipt.inner.logs();
+
+    // we want to return
+
+    // todo: p2: check if there's a way to validate that the receipt is indeed coming from an
+    // execution of a batch execute against order gateway
+
+    let mut result: Vec<U256> = Vec::new();
+
+    for log in logs {
+        let log_data = log.data();
+        let event_identifier = log_data.topics()[0];
+
+        // todo: change to correct identifiers
+        let successful_order_identifier = B256::from([0u8; 32]);
+        let failed_order_message_identifier = B256::from([0u8; 32]);
+
+        if event_identifier == successful_order_identifier {
+            // todo: extract and decode the output
+            result.push(U256::from(1));
+        } else if event_identifier == failed_order_message_identifier {
+            // todo: extract and decode the reason string
+            result.push(U256::from(0));
+        } else {
+            // must be failed_order_bytes_identifier
+            // do nothing
+            result.push(U256::from(0));
+        }
+    }
+
+    return result;
 }

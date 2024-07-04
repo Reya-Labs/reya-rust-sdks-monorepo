@@ -114,7 +114,7 @@ async fn execute_order(
 async fn execute_batch_orders(
     private_key: &String,
     http_provider: &http_provider::HttpProvider,
-    batch_orders: &mut Vec<data_types::BatchOrder>,
+    batch_orders: Vec<data_types::BatchOrder>,
 ) {
     let signer: PrivateKeySigner = private_key.parse().unwrap();
 
