@@ -11,7 +11,7 @@ use alloy::{
     sol,
     sol_types::{ContractError, SolEvent},
 };
-use alloy_sol_types::SolValue;
+use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
 use tracing::*;
 
@@ -424,9 +424,43 @@ pub fn extract_execute_batch_outputs(
 
                 let reason_string = failed_order_message.reason.clone();
 
-                let reason = String::abi_decode(reason_string.as_bytes(), false).unwrap();
+                let bytes: [u8; 4] = FromHex::from_hex(reason_string.get().trim_matches('"'))?;
 
-                info!("Error with following reason:{:?}", reason);
+                use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
+
+                // todo: p2: dig into passive perp instrument and core errors that can happen as well
+                // as these are dependency contracts
+                match Errors::abi_decode(&bytes, true)
+                    .wrap_err("unknown OrderGatewayProxy error")?
+                {
+                    Errors::NonceAlreadyUsed(_) => {
+                        info!("NonceAlreadyUsed");
+                    }
+                    Errors::SignerNotAuthorized(_) => {
+                        info!("SignerNotAuthorized");
+                    }
+                    Errors::InvalidSignature(_) => {
+                        info!("InvalidSignature");
+                    }
+                    Errors::OrderTypeNotFound(_) => {
+                        info!("OrderTypeNotFound");
+                    }
+                    Errors::IncorrectStopLossDirection(_) => {
+                        info!("IncorrectStopLossDirection");
+                    }
+                    Errors::ZeroStopLossOrderSize(_) => {
+                        info!("ZeroStopLossOrderSize");
+                    }
+                    Errors::MatchOrderOutputsLengthMismatch(_) => {
+                        info!("MatchOrderOutputsLengthMismatch");
+                    }
+                    Errors::HigherExecutionPrice(_) => {
+                        info!("HigherExecutionPrice");
+                    }
+                    Errors::LowerExecutionPrice(_) => {
+                        info!("LowerExecutionPrice");
+                    }
+                }
 
                 result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
