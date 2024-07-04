@@ -243,7 +243,7 @@ impl HttpProvider {
     pub async fn execute_batch(
         &self,
         signer: PrivateKeySigner,
-        batch_orders: Vec<data_types::BatchOrder>,
+        batch_orders: &Vec<data_types::BatchOrder>,
     ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
         //
