@@ -476,6 +476,8 @@ pub fn extract_execute_batch_outputs(
                 result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
+                // todo: p2: check if we need to do any procesing for these type of errors
+
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
                 result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
