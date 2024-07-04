@@ -13,6 +13,7 @@ use alloy::{
 };
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
+use eyre::WrapErr;
 use tracing::*;
 
 pub enum BatchExecuteOutput {
@@ -428,37 +429,39 @@ pub fn extract_execute_batch_outputs(
 
                 use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
 
-                // todo: p2: dig into passive perp instrument and core errors that can happen as well
-                // as these are dependency contracts
-                match Errors::abi_decode(&bytes, true)
-                    .wrap_err("unknown OrderGatewayProxy error")?
-                {
-                    Errors::NonceAlreadyUsed(_) => {
-                        info!("NonceAlreadyUsed");
-                    }
-                    Errors::SignerNotAuthorized(_) => {
-                        info!("SignerNotAuthorized");
-                    }
-                    Errors::InvalidSignature(_) => {
-                        info!("InvalidSignature");
-                    }
-                    Errors::OrderTypeNotFound(_) => {
-                        info!("OrderTypeNotFound");
-                    }
-                    Errors::IncorrectStopLossDirection(_) => {
-                        info!("IncorrectStopLossDirection");
-                    }
-                    Errors::ZeroStopLossOrderSize(_) => {
-                        info!("ZeroStopLossOrderSize");
-                    }
-                    Errors::MatchOrderOutputsLengthMismatch(_) => {
-                        info!("MatchOrderOutputsLengthMismatch");
-                    }
-                    Errors::HigherExecutionPrice(_) => {
-                        info!("HigherExecutionPrice");
-                    }
-                    Errors::LowerExecutionPrice(_) => {
-                        info!("LowerExecutionPrice");
+                match Errors::abi_decode(&bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+                    Ok(decoded_error) => match decoded_error {
+                        Errors::NonceAlreadyUsed(_) => {
+                            info!("NonceAlreadyUsed");
+                        }
+                        Errors::SignerNotAuthorized(_) => {
+                            info!("SignerNotAuthorized");
+                        }
+                        Errors::InvalidSignature(_) => {
+                            info!("InvalidSignature");
+                        }
+                        Errors::OrderTypeNotFound(_) => {
+                            info!("OrderTypeNotFound");
+                        }
+                        Errors::IncorrectStopLossDirection(_) => {
+                            info!("IncorrectStopLossDirection");
+                        }
+                        Errors::ZeroStopLossOrderSize(_) => {
+                            info!("ZeroStopLossOrderSize");
+                        }
+                        Errors::MatchOrderOutputsLengthMismatch(_) => {
+                            info!("MatchOrderOutputsLengthMismatch");
+                        }
+                        Errors::HigherExecutionPrice(_) => {
+                            info!("HigherExecutionPrice");
+                        }
+                        Errors::LowerExecutionPrice(_) => {
+                            info!("LowerExecutionPrice");
+                        }
+                    },
+                    Err(err) => {
+                        error!("Error decoding reason string: {:?}", err);
+                        // todo: p2: handle the error as needed
                     }
                 }
 
