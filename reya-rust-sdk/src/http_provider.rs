@@ -15,6 +15,12 @@ use alloy_sol_types::SolValue;
 use eyre;
 use tracing::*;
 
+pub enum BatchExecuteOutput {
+    SuccessfulOrder(OrderGatewayProxy::SuccessfulOrder),
+    FailedOrderMessage(OrderGatewayProxy::FailedOrderMessage),
+    FailedOrderBytes(OrderGatewayProxy::FailedOrderBytes),
+}
+
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
@@ -389,10 +395,12 @@ impl HttpProvider {
     }
 }
 
-pub fn extract_execute_batch_outputs(batch_execute_receipt: &TransactionReceipt) -> Vec<U256> {
+pub fn extract_execute_batch_outputs(
+    batch_execute_receipt: &TransactionReceipt,
+) -> Vec<BatchExecuteOutput> {
     let logs = batch_execute_receipt.inner.logs();
 
-    let mut result: Vec<U256> = Vec::new();
+    let mut result: Vec<BatchExecuteOutput> = Vec::new();
 
     for log in logs {
         let log_data = log.data();
@@ -403,34 +411,20 @@ pub fn extract_execute_batch_outputs(batch_execute_receipt: &TransactionReceipt)
             // todo: check if we need ConditionalOrder struct instead of tuple type
             // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
             OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
-                let OrderGatewayProxy::SuccessfulOrder {
-                    orderIndex,
-                    order,
-                    output,
-                    blockTimestamp,
-                } = log.log_decode().unwrap().inner.data;
-                println!("SuccessfulOrder {orderIndex}, {output}, {blockTimestamp}");
-                result.push(U256::from(1));
+                let successful_order: OrderGatewayProxy::SuccessfulOrder =
+                    log.log_decode().unwrap().inner.data;
+
+                result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
-                let OrderGatewayProxy::FailedOrderMessage {
-                    orderIndex,
-                    order,
-                    reason,
-                    blockTimestamp,
-                } = log.log_decode().unwrap().inner.data;
-                println!("FailedOrderMessage order {orderIndex}, {reason}, {blockTimestamp}");
-                result.push(U256::from(0));
+                let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
+                    log.log_decode().unwrap().inner.data;
+                result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
-                let OrderGatewayProxy::FailedOrderBytes {
-                    orderIndex,
-                    order,
-                    reason,
-                    blockTimestamp,
-                } = log.log_decode().unwrap().inner.data;
-                println!("FailedOrderBytes {orderIndex}, {reason}, {blockTimestamp}");
-                result.push(U256::from(0));
+                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
+                    log.log_decode().unwrap().inner.data;
+                result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
             }
             _ => (),
         }

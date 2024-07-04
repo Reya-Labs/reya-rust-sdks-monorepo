@@ -98,8 +98,29 @@ async fn get_execute_batch_receipt_logs(
 
     match batch_execute_receipt_option {
         Some(batch_execute_receipt) => {
-            let result = extract_execute_batch_outputs(&batch_execute_receipt);
-            info!("{:?}", result);
+            let results = extract_execute_batch_outputs(&batch_execute_receipt);
+            for batch_execute_output in results {
+                match batch_execute_output {
+                    http_provider::BatchExecuteOutput::SuccessfulOrder(_successful_order) => {
+                        info!(
+                            "Order executed succesfully, block time:{:?}",
+                            _successful_order.blockTimestamp
+                        );
+                    }
+                    http_provider::BatchExecuteOutput::FailedOrderMessage(_failed_order_msg) => {
+                        error!(
+                            "Order execution msg failed with reason:{:?}",
+                            _failed_order_msg.reason
+                        );
+                    }
+                    http_provider::BatchExecuteOutput::FailedOrderBytes(_failed_order_bytes) => {
+                        error!(
+                            "Order execution bytes failed with reason:{:?}",
+                            _failed_order_bytes.reason.to_string()
+                        );
+                    }
+                }
+            }
         }
         None => {}
     }
