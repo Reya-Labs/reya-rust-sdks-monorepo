@@ -283,7 +283,8 @@ impl HttpProvider {
                 encoded_inputs.clone_from(&bytes);
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+            // todo: p1: 2 for mainnet, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![4u128];
 
             orders.push(OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
