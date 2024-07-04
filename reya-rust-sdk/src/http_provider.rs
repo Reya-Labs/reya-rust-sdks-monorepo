@@ -339,19 +339,26 @@ impl HttpProvider {
         eyre::Ok(_0)
     }
 
-    pub async fn get_transaction(
+    pub async fn get_transaction_receipt(
         &self,
         tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> eyre::Result<Vec<u128>> {
+    ) -> Option<TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
 
-        let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
+        let transaction_receipt_result = provider.get_transaction_receipt(tx_hash).await;
 
-        info!("Transaction reponse:{:?}", Some(transaction_response));
-
-        eyre::Ok(vec![])
+        match transaction_receipt_result {
+            Ok(transaction_receipt) => {
+                info!("Transaction receipt:{:?}", Some(transaction_receipt));
+                return transaction_receipt.clone();
+            }
+            Err(err) => {
+                error!("{:?}", err);
+                return None;
+            }
+        }
     }
 
     ///

@@ -89,7 +89,12 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
     }
 }
 
-async fn get_execute_batch_receipt_logs(batch_execute_receipt: &TransactionReceipt) {
+async fn get_execute_batch_receipt_logs(
+    batch_execute_hash: String,
+    http_provider: &http_provider::HttpProvider,
+) {
+    let batch_execute_receipt = http_provider.get_transaction_receipt(batch_execute_hash);
+
     let result = extract_execute_batch_outputs(batch_execute_receipt);
     info!("{:?}", result);
 }
@@ -154,12 +159,12 @@ async fn main() -> eyre::Result<()> {
                 .help("Gets the pool price for the required market id"),
         )
         .arg(
-            Arg::new("get-log")
-                .long("get-log")
+            Arg::new("get-execute-batch-receipt-logs")
+                .long("get-execute-batch-receipt-logs")
                 .action(ArgAction::Set)
-                .value_names(["tx_hash"])
+                .value_names(["batch_execute_hash"])
                 .num_args(1..)
-                .help("Gets the transaction logs by tx_hash"),
+                .help("Gets the batch execute output from event logs"),
         )
         .arg(
             Arg::new("batch-execute-orders")
