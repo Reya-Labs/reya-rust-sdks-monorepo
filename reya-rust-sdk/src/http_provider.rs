@@ -318,25 +318,25 @@ impl HttpProvider {
     ///
     ///  info!("get account owner address, tx hash:{:?}", transaction_hash);
     ///  '''
-    pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
-    {
-        // create http provider
-        let provider = ProviderBuilder::new()
-            .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
+    // pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
+    // {
+    //     // create http provider
+    //     let provider = ProviderBuilder::new()
+    //         .with_recommended_fillers()
+    //         .on_http(self.sdk_config.rpc_url.clone());
 
-        // core create account
-        let proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
-            provider,
-        );
+    //     // core create account
+    //     let proxy = OrderGatewayProxy::new(
+    //         self.sdk_config.order_gateway_contract_address.parse()?,
+    //         provider,
+    //     );
 
-        // Call the contract, retrieve the account owner information.
-        let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
-            proxy.getAccountOwner(account_id).call().await?;
+    //     // Call the contract, retrieve the account owner information.
+    //     let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
+    //         proxy.getAccountOwner(account_id).call().await?;
 
-        eyre::Ok(_0)
-    }
+    //     eyre::Ok(_0)
+    // }
 
     pub async fn get_transaction_receipt(
         &self,
@@ -413,6 +413,55 @@ pub fn extract_execute_batch_outputs(batch_execute_receipt: &TransactionReceipt)
             // must be failed_order_bytes_identifier
             // do nothing
             result.push(U256::from(0));
+        }
+    }
+
+    return result;
+}
+
+pub fn extract_execute_batch_outputs_and_decode(
+    batch_execute_receipt: &TransactionReceipt,
+) -> Vec<U256> {
+    let logs = batch_execute_receipt.inner.logs();
+
+    let mut result: Vec<U256> = Vec::new();
+
+    for log in logs {
+        let log_data = log.data();
+        // topic0 is the hash of the signature of the event.
+        let topic0 = log_data.topics()[0];
+
+        match topic0 {
+            // todo: check if we need ConditionalOrder struct instead of tuple type
+            // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
+            Some(&OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH) => {
+                let OrderGatewayProxy::SuccessfulOrder {
+                    orderIndex,
+                    order,
+                    output,
+                    blockTimestamp,
+                } = log.log_decode().unwrap().inner.data;
+                println!("SuccessfulOrder {orderIndex}, {output}, {blockTimestamp}");
+            }
+            Some(&OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH) => {
+                let OrderGatewayProxy::FailedOrderMessage {
+                    orderIndex,
+                    order,
+                    reason,
+                    blockTimestamp,
+                } = log.log_decode().unwrap().inner.data;
+                println!("FailedOrderMessage order {orderIndex}, {reason}, {blockTimestamp}");
+            }
+            Some(&OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH) => {
+                let OrderGatewayProxy::FailedOrderBytes {
+                    orderIndex,
+                    order,
+                    reason,
+                    blockTimestamp,
+                } = log.log_decode().unwrap().inner.data;
+                println!("FailedOrderBytes {orderIndex}, {reason}, {blockTimestamp}");
+            }
+            _ => (),
         }
     }
 
