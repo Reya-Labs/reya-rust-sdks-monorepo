@@ -9,7 +9,7 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     signers::local::PrivateKeySigner,
     sol,
-    sol_types::SolEvent,
+    sol_types::{ContractError, SolEvent},
 };
 use alloy_sol_types::SolValue;
 use eyre;
@@ -420,6 +420,13 @@ pub fn extract_execute_batch_outputs(
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
+
+                let reason_string = failed_order_message.reason.clone();
+
+                let reason = String::abi_decode(reason_string.as_bytes(), false).unwrap();
+
+                info!("Error with following reason:{:?}", reason);
+
                 result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
