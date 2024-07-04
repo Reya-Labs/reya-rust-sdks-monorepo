@@ -24,6 +24,7 @@ pub enum BatchExecuteOutput {
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     rUSDProxy,
     "./transactions/abi/rUsdProxy.json"
 );

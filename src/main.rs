@@ -103,20 +103,25 @@ async fn get_execute_batch_receipt_logs(
                 match batch_execute_output {
                     http_provider::BatchExecuteOutput::SuccessfulOrder(_successful_order) => {
                         info!(
-                            "Order executed succesfully, block time:{:?}",
-                            _successful_order.blockTimestamp
+                            "Order executed succesfully, block time:{:?} {:?}",
+                            _successful_order.blockTimestamp, _successful_order
                         );
                     }
                     http_provider::BatchExecuteOutput::FailedOrderMessage(_failed_order_msg) => {
                         error!(
-                            "Order execution msg failed with reason:{:?}",
-                            _failed_order_msg.reason
+                            "Order execution msg failed with reason:{:?}, block time:{:?} {:?}",
+                            _failed_order_msg.reason, //
+                            _failed_order_msg.blockTimestamp,
+                            _failed_order_msg
                         );
                     }
                     http_provider::BatchExecuteOutput::FailedOrderBytes(_failed_order_bytes) => {
                         error!(
-                            "Order execution bytes failed with reason:{:?}",
-                            _failed_order_bytes.reason.to_string()
+                            "Order execution bytes failed with reason:{:?}, block time:{:?}, order index:{:?}, {:?}",
+                            _failed_order_bytes.reason.to_string(),
+                            _failed_order_bytes.blockTimestamp,
+                            _failed_order_bytes.orderIndex,
+                            _failed_order_bytes.order.nonce,
                         );
                     }
                 }

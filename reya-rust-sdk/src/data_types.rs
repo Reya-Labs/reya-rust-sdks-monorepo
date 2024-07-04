@@ -64,6 +64,7 @@ pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     OrderGatewayProxy,
     "./transactions/abi/OrderGatewayProxy.json"
 );
@@ -72,6 +73,7 @@ sol!(
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     PassivePerpInstrumentProxy,
     "./transactions/abi/PassivePerpInstrumentProxy.json"
 );
@@ -80,6 +82,7 @@ sol!(
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     CoreProxy,
     "./transactions/abi/CoreProxy.json"
 );
