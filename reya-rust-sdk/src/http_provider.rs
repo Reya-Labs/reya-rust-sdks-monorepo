@@ -417,8 +417,12 @@ pub fn extract_execute_batch_outputs(
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
-                // todo: p1: get the output execution price of the successfully executed order
+                let execution_price_bytes = successful_order.output.clone();
+                let execution_price = U256::abi_decode(&execution_price_bytes, true).unwrap();
 
+                info!("Successful order, execution price:{:?}", execution_price);
+
+                // todo: p1: consider packaging the execution price into the output from the sdk for successful order
                 result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
@@ -432,7 +436,7 @@ pub fn extract_execute_batch_outputs(
 
                 use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
 
-                // todo: p1: package the decoded errors into the output from the sdk
+                // todo: p1: consider packaging the decoded errors into the output from the sdk
                 match Errors::abi_decode(&bytes, true).wrap_err("unknown OrderGatewayProxy error") {
                     Ok(decoded_error) => match decoded_error {
                         Errors::NonceAlreadyUsed(_) => {
