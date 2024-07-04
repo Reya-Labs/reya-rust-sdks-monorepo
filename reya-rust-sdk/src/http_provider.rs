@@ -6,7 +6,6 @@ use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::Log,
     signers::local::PrivateKeySigner,
     sol,
 };
@@ -351,8 +350,11 @@ impl HttpProvider {
 
         match transaction_receipt_result {
             Ok(transaction_receipt) => {
-                info!("Transaction receipt:{:?}", Some(transaction_receipt));
-                return transaction_receipt.clone();
+                info!(
+                    "Transaction receipt:{:?}",
+                    Some(transaction_receipt.clone())
+                );
+                return Some(transaction_receipt.clone()?);
             }
             Err(err) => {
                 error!("{:?}", err);

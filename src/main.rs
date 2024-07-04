@@ -1,12 +1,11 @@
-use alloy::rpc::types::TransactionReceipt;
 #[allow(dead_code)]
 use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
 };
 use clap::*;
+use core::result::Result::Ok;
 use dotenv::dotenv;
-use eyre;
 use reya_rust_sdk::{
     data_types,
     http_provider::{self, extract_execute_batch_outputs},
@@ -93,10 +92,17 @@ async fn get_execute_batch_receipt_logs(
     batch_execute_hash: String,
     http_provider: &http_provider::HttpProvider,
 ) {
-    let batch_execute_receipt = http_provider.get_transaction_receipt(batch_execute_hash);
+    let batch_execute_receipt_option = http_provider
+        .get_transaction_receipt(batch_execute_hash.parse().unwrap())
+        .await;
 
-    let result = extract_execute_batch_outputs(batch_execute_receipt);
-    info!("{:?}", result);
+    match batch_execute_receipt_option {
+        Some(batch_execute_receipt) => {
+            let result = extract_execute_batch_outputs(&batch_execute_receipt);
+            info!("{:?}", result);
+        }
+        None => {}
+    }
 }
 
 #[allow(dead_code)]
@@ -159,12 +165,12 @@ async fn main() -> eyre::Result<()> {
                 .help("Gets the pool price for the required market id"),
         )
         .arg(
-            Arg::new("get-execute-batch-receipt-logs")
-                .long("get-execute-batch-receipt-logs")
+            Arg::new("get-execute-batch-receipt-outputs")
+                .long("get-execute-batch-receipt-outputs")
                 .action(ArgAction::Set)
                 .value_names(["batch_execute_hash"])
                 .num_args(1..)
-                .help("Gets the batch execute output from event logs"),
+                .help("Gets the batch execute outputs from event logs"),
         )
         .arg(
             Arg::new("batch-execute-orders")
@@ -205,11 +211,11 @@ async fn main() -> eyre::Result<()> {
             sdk_config.rpc_url, market_id
         );
         get_pool_price(market_id, &http_provider).await;
-    } else if matches.contains_id("get-log") {
+    } else if matches.contains_id("get-execute-batch-receipt-outputs") {
         // create account
         let packages: Vec<_> = matches
-            .get_many::<String>("get-log")
-            .expect("tx_hash")
+            .get_many::<String>("get-execute-batch-receipt-outputs")
+            .expect("batch_execute_hash")
             .map(|s| s.as_str())
             .collect();
 
@@ -217,8 +223,9 @@ async fn main() -> eyre::Result<()> {
         let http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
-        let tx = String::from(packages[0]); // tx_hash
-        println!("get log{} {}", sdk_config.rpc_url, tx);
+        let batch_execute_hash = String::from(packages[0]); // batch_execute_hash
+        println!("get log{} {}", sdk_config.rpc_url, batch_execute_hash);
+        get_execute_batch_receipt_logs(batch_execute_hash, &http_provider).await;
     } else
     // handle batche execute request
     if matches.contains_id("batch-execute-orders") {
