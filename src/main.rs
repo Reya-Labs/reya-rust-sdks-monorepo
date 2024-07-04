@@ -138,7 +138,7 @@ async fn execute_batch_orders(
 ) {
     let signer: PrivateKeySigner = private_key.parse().unwrap();
 
-    let transaction_receipt = http_provider.execute_batch(signer, batch_orders).await;
+    let transaction_receipt = http_provider.execute_batch(signer, &batch_orders).await;
     info!(
         "Execute batch orders, tx hash:{:?}",
         transaction_receipt.unwrap().transaction_hash
