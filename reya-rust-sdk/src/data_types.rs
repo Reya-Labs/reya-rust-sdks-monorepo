@@ -56,8 +56,9 @@ pub fn load_enviroment_config() -> SdkConfig {
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 
 // markets
+// todo: p1 add sol market
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
-pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
+pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
@@ -73,6 +74,14 @@ sol!(
     #[sol(rpc)]
     PassivePerpInstrumentProxy,
     "./transactions/abi/PassivePerpInstrumentProxy.json"
+);
+
+// Codegen from ABI file to interact with the reya core proxy contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    CoreProxy,
+    "./transactions/abi/CoreProxy.json"
 );
 
 #[allow(dead_code)]

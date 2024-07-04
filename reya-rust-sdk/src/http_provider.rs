@@ -1,4 +1,5 @@
 use crate::data_types;
+use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use alloy::rpc::types::TransactionReceipt;
@@ -8,6 +9,7 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     signers::local::PrivateKeySigner,
     sol,
+    sol_types::SolEvent,
 };
 use alloy_sol_types::SolValue;
 use eyre;
@@ -93,7 +95,8 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let proxy = OrderGatewayProxy::new(
+        // todo: p1: use core proxy address (add to sdk config)
+        let proxy = CoreProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
@@ -318,25 +321,26 @@ impl HttpProvider {
     ///
     ///  info!("get account owner address, tx hash:{:?}", transaction_hash);
     ///  '''
-    // pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
-    // {
-    //     // create http provider
-    //     let provider = ProviderBuilder::new()
-    //         .with_recommended_fillers()
-    //         .on_http(self.sdk_config.rpc_url.clone());
+    pub async fn get_account_owner(&self, account_id: u128) -> eyre::Result<Address> // return the account owner address
+    {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.sdk_config.rpc_url.clone());
 
-    //     // core create account
-    //     let proxy = OrderGatewayProxy::new(
-    //         self.sdk_config.order_gateway_contract_address.parse()?,
-    //         provider,
-    //     );
+        // core create account
+        // todo: p1: use the core proxy address from the sdk config
+        let proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider,
+        );
 
-    //     // Call the contract, retrieve the account owner information.
-    //     let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
-    //         proxy.getAccountOwner(account_id).call().await?;
+        // Call the contract, retrieve the account owner information.
+        let CoreProxy::getAccountOwnerReturn { _0 } =
+            proxy.getAccountOwner(account_id).call().await?;
 
-    //     eyre::Ok(_0)
-    // }
+        eyre::Ok(_0)
+    }
 
     pub async fn get_transaction_receipt(
         &self,
@@ -388,42 +392,6 @@ impl HttpProvider {
 pub fn extract_execute_batch_outputs(batch_execute_receipt: &TransactionReceipt) -> Vec<U256> {
     let logs = batch_execute_receipt.inner.logs();
 
-    // we want to return
-
-    // todo: p2: check if there's a way to validate that the receipt is indeed coming from an
-    // execution of a batch execute against order gateway
-
-    let mut result: Vec<U256> = Vec::new();
-
-    for log in logs {
-        let log_data = log.data();
-        let event_identifier = log_data.topics()[0];
-
-        // todo: change to correct identifiers
-        let successful_order_identifier = B256::from([0u8; 32]);
-        let failed_order_message_identifier = B256::from([0u8; 32]);
-
-        if event_identifier == successful_order_identifier {
-            // todo: extract and decode the output
-            result.push(U256::from(1));
-        } else if event_identifier == failed_order_message_identifier {
-            // todo: extract and decode the reason string
-            result.push(U256::from(0));
-        } else {
-            // must be failed_order_bytes_identifier
-            // do nothing
-            result.push(U256::from(0));
-        }
-    }
-
-    return result;
-}
-
-pub fn extract_execute_batch_outputs_and_decode(
-    batch_execute_receipt: &TransactionReceipt,
-) -> Vec<U256> {
-    let logs = batch_execute_receipt.inner.logs();
-
     let mut result: Vec<U256> = Vec::new();
 
     for log in logs {
@@ -434,7 +402,7 @@ pub fn extract_execute_batch_outputs_and_decode(
         match topic0 {
             // todo: check if we need ConditionalOrder struct instead of tuple type
             // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
-            Some(&OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH) => {
+            OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
                 let OrderGatewayProxy::SuccessfulOrder {
                     orderIndex,
                     order,
@@ -442,8 +410,9 @@ pub fn extract_execute_batch_outputs_and_decode(
                     blockTimestamp,
                 } = log.log_decode().unwrap().inner.data;
                 println!("SuccessfulOrder {orderIndex}, {output}, {blockTimestamp}");
+                result.push(U256::from(1));
             }
-            Some(&OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH) => {
+            OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
                 let OrderGatewayProxy::FailedOrderMessage {
                     orderIndex,
                     order,
@@ -451,8 +420,9 @@ pub fn extract_execute_batch_outputs_and_decode(
                     blockTimestamp,
                 } = log.log_decode().unwrap().inner.data;
                 println!("FailedOrderMessage order {orderIndex}, {reason}, {blockTimestamp}");
+                result.push(U256::from(0));
             }
-            Some(&OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH) => {
+            OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
                 let OrderGatewayProxy::FailedOrderBytes {
                     orderIndex,
                     order,
@@ -460,6 +430,7 @@ pub fn extract_execute_batch_outputs_and_decode(
                     blockTimestamp,
                 } = log.log_decode().unwrap().inner.data;
                 println!("FailedOrderBytes {orderIndex}, {reason}, {blockTimestamp}");
+                result.push(U256::from(0));
             }
             _ => (),
         }
