@@ -11,8 +11,10 @@ use alloy::{
     sol,
     sol_types::SolEvent,
 };
-use alloy_sol_types::SolValue;
+use alloy_primitives::hex::FromHex;
+use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
+use eyre::WrapErr;
 use tracing::*;
 
 pub enum BatchExecuteOutput {
@@ -412,21 +414,72 @@ pub fn extract_execute_batch_outputs(
         let topic0 = log_data.topics()[0];
 
         match topic0 {
-            // todo: check if we need ConditionalOrder struct instead of tuple type
             // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
             OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
+                let execution_price_bytes = successful_order.output.clone();
+                let execution_price = U256::abi_decode(&execution_price_bytes, true).unwrap();
+
+                info!("Successful order, execution price:{:?}", execution_price);
+
+                // todo: p1: consider packaging the execution price into the output from the sdk for successful order
                 result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
+                // decode the error reason string
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
+
+                let reason_string = failed_order_message.reason.clone();
+
+                let bytes: [u8; 4] = FromHex::from_hex(reason_string.trim_matches('"')).unwrap();
+
+                use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
+
+                // todo: p1: consider packaging the decoded errors into the output from the sdk
+                match Errors::abi_decode(&bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+                    Ok(decoded_error) => match decoded_error {
+                        Errors::NonceAlreadyUsed(_) => {
+                            info!("NonceAlreadyUsed");
+                        }
+                        Errors::SignerNotAuthorized(_) => {
+                            info!("SignerNotAuthorized");
+                        }
+                        Errors::InvalidSignature(_) => {
+                            info!("InvalidSignature");
+                        }
+                        Errors::OrderTypeNotFound(_) => {
+                            info!("OrderTypeNotFound");
+                        }
+                        Errors::IncorrectStopLossDirection(_) => {
+                            info!("IncorrectStopLossDirection");
+                        }
+                        Errors::ZeroStopLossOrderSize(_) => {
+                            info!("ZeroStopLossOrderSize");
+                        }
+                        Errors::MatchOrderOutputsLengthMismatch(_) => {
+                            info!("MatchOrderOutputsLengthMismatch");
+                        }
+                        Errors::HigherExecutionPrice(_) => {
+                            info!("HigherExecutionPrice");
+                        }
+                        Errors::LowerExecutionPrice(_) => {
+                            info!("LowerExecutionPrice");
+                        }
+                    },
+                    Err(err) => {
+                        error!("Error decoding reason string: {:?}", err);
+                        // todo: p2: handle the error as needed
+                    }
+                }
 
                 result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
+                // todo: p2: check if we need to do any procesing for these type of errors
+
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
 
