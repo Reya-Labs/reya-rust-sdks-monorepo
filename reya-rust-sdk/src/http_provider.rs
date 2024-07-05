@@ -2,6 +2,7 @@ use crate::data_types;
 use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
+use crate::data_types::PRICE_MULTIPLIER;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
@@ -254,6 +255,8 @@ impl HttpProvider {
         batch_orders: &Vec<data_types::BatchOrder>,
     ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
+        trace!("Start Execute batch");
+
         let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
         let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
 
@@ -283,9 +286,22 @@ impl HttpProvider {
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
-                let trigger_price = batch_order.stop_price;
 
-                let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
+                let trigger_price: U256 = (batch_order.stop_price * PRICE_MULTIPLIER)
+                    .trunc() // take only the integer part
+                    .to_string()
+                    .parse()
+                    .unwrap();
+                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
+                    .trunc() // take only the integer part
+                    .to_string()
+                    .parse()
+                    .unwrap();
+                let bytes = (
+                    batch_order.is_long,
+                    trigger_price.to_string(),
+                    price_limit.to_string(),
+                )
                     .abi_encode_sequence();
 
                 encoded_inputs.clone_from(&bytes);
@@ -328,6 +344,8 @@ impl HttpProvider {
         if receipt.inner.is_success() {
             trace!("BatchExecuted receipt={:?}", receipt);
         }
+
+        trace!("End Execute batch");
 
         eyre::Ok(receipt)
     }
