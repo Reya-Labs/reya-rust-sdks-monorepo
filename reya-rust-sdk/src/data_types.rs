@@ -122,6 +122,7 @@ pub enum OrderType {
 }
 
 /// order struct to execute orders in a batch
+#[derive(Debug)]
 pub struct BatchOrder {
     pub order_id: String,
     pub account_id: u128,
