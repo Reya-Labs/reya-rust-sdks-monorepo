@@ -3,6 +3,7 @@ use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
 };
+use alloy_sol_types::SolValue;
 use clap::*;
 use core::result::Result::Ok;
 use dotenv::dotenv;
@@ -114,6 +115,11 @@ async fn get_execute_batch_receipt_logs(
                             _failed_order_msg.blockTimestamp,
                             _failed_order_msg
                         );
+                        let reason =
+                            String::abi_decode(_failed_order_msg.reason.clone().as_bytes(), false)
+                                .unwrap();
+
+                        error!("Error with following reason:{:?}", reason);
                     }
                     http_provider::BatchExecuteOutput::FailedOrderBytes(_failed_order_bytes) => {
                         error!(
@@ -122,6 +128,14 @@ async fn get_execute_batch_receipt_logs(
                             _failed_order_bytes.blockTimestamp,
                             _failed_order_bytes.orderIndex,
                             _failed_order_bytes.order.nonce,
+                        );
+
+                        let reason =
+                            String::abi_decode(&_failed_order_bytes.reason, false).unwrap();
+
+                        error!(
+                            "OrderBytes failed, Error with following reason:{:?}",
+                            reason
                         );
                     }
                 }

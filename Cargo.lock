@@ -2480,6 +2480,7 @@ name = "reya-rust-sdks"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "alloy-sol-types",
  "clap",
  "dotenv",
  "eyre",

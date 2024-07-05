@@ -2,14 +2,14 @@ use crate::data_types;
 use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
-use alloy::rpc::types::TransactionReceipt;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
+    rpc::types::TransactionReceipt,
     signers::local::PrivateKeySigner,
     sol,
-    sol_types::{ContractError, SolEvent},
+    sol_types::SolEvent,
 };
 use alloy_sol_types::SolValue;
 use eyre;
@@ -280,12 +280,14 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
                 let trigger_price = batch_order.stop_price;
-                let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+                let bytes = (trigger_price, batch_order.price_limit)
+                    //let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
+                    .abi_encode_sequence();
+
                 encoded_inputs.clone_from(&bytes);
             }
 
-            // todo: p1: 2 for mainnet, 4 for testnet
-            let counterparty_account_ids: Vec<u128> = vec![4u128];
+            let counterparty_account_ids: Vec<u128> = vec![4u128]; // hardcode counter party id = 2 for production, 4 for testnet
 
             orders.push(OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -422,17 +424,12 @@ pub fn extract_execute_batch_outputs(
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
 
-                let reason_string = failed_order_message.reason.clone();
-
-                let reason = String::abi_decode(reason_string.as_bytes(), false).unwrap();
-
-                info!("Error with following reason:{:?}", reason);
-
                 result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
+
                 result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
             }
             _ => (),

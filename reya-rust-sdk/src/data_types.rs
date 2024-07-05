@@ -59,6 +59,7 @@ pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 // todo: p1 add sol market
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
+pub const SOL_MARKET_ID: u32 = 3u32; //2=reya btc market
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
@@ -117,6 +118,7 @@ pub struct BatchOrder {
     /// stop price only set when order type = stop_loss
     pub stop_price: I256,
     pub price_limit: U256,
+    pub is_long: bool,
     pub signer_address: Address,
     pub order_nonce: U256,
     pub eip712_signature: OrderGatewayProxy::EIP712Signature,
