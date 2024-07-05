@@ -3,7 +3,6 @@ use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
 };
-use alloy_sol_types::SolValue;
 use clap::*;
 use core::result::Result::Ok;
 use dotenv::dotenv;
@@ -15,13 +14,11 @@ use rust_decimal::{prelude::*, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use simple_logger;
-//use std::env;
 use std::fs;
 use tokio;
 use tracing::*;
-//use url::Url;
 
-/// order struct to execute orders in a batch
+/// order input struct to execute orders in a batch
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JsonBatchOrder {
     pub account_id: u128,
@@ -101,44 +98,15 @@ async fn get_execute_batch_receipt_logs(
         Some(batch_execute_receipt) => {
             let results = extract_execute_batch_outputs(&batch_execute_receipt);
             for batch_execute_output in results {
-                
-                if batch_execute_output.is_succesfull{}
-
-                    http_provider::BatchExecuteOutput::SuccessfulOrder(_successful_order) => {
+                match batch_execute_output.result {
+                    Ok(_) => {
                         info!(
-                            "Order executed succesfully, block time:{:?} {:?}",
-                            _successful_order.blockTimestamp, _successful_order
+                            "Order executed succesfully, block time:{:?}",
+                            batch_execute_output
                         );
                     }
-                    http_provider::BatchExecuteOutput::FailedOrderMessage(_failed_order_msg) => {
-                        error!(
-                            "Order execution msg failed with reason:{:?}, block time:{:?} {:?}",
-                            _failed_order_msg.reason, //
-                            _failed_order_msg.blockTimestamp,
-                            _failed_order_msg
-                        );
-                        let reason =
-                            String::abi_decode(_failed_order_msg.reason.clone().as_bytes(), false)
-                                .unwrap();
-
-                        error!("Error with following reason:{:?}", reason);
-                    }
-                    http_provider::BatchExecuteOutput::FailedOrderBytes(_failed_order_bytes) => {
-                        error!(
-                            "Order execution bytes failed with reason:{:?}, block time:{:?}, order index:{:?}, {:?}",
-                            _failed_order_bytes.reason.to_string(),
-                            _failed_order_bytes.blockTimestamp,
-                            _failed_order_bytes.orderIndex,
-                            _failed_order_bytes.order.nonce,
-                        );
-
-                        let reason =
-                            String::abi_decode(&_failed_order_bytes.reason, false).unwrap();
-
-                        error!(
-                            "OrderBytes failed, Error with following reason:{:?}",
-                            reason
-                        );
+                    Err(error_str) => {
+                        error!("Batch order failed {:?}", error_str);
                     }
                 }
             }

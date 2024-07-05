@@ -18,14 +18,13 @@ use rust_decimal::{prelude::*, Decimal};
 use std::result::Result;
 use tracing::*;
 
+#[derive(Debug)]
 pub struct BatchExecuteOutput {
     pub order_index: u32,
     pub execution_price: Decimal,
     pub order_nonce: aliases::TxNonce,
     pub block_timestamp: aliases::BlockTimestamp,
     pub result: Result<bool, String>,
-    pub reason: String,
-    pub is_succesfull: bool,
 }
 
 sol!(
@@ -409,31 +408,46 @@ fn decode_reason(reason_bytes: Bytes) -> String {
 
     match Errors::abi_decode(&reason_bytes, true).wrap_err("unknown OrderGatewayProxy error") {
         Ok(decoded_error) => match decoded_error {
-            Errors::NonceAlreadyUsed(_) => {
+            Errors::NonceAlreadyUsed(nonce_already_used) => {
+                error!("NonceAlreadyUsed={:?}", nonce_already_used);
                 _reason = String::from("NonceAlreadyUsed");
             }
-            Errors::SignerNotAuthorized(_) => {
+            Errors::SignerNotAuthorized(signer_not_authorized) => {
+                error!("SignerNotAuthorized={:?}", signer_not_authorized);
                 _reason = String::from("SignerNotAuthorized");
             }
-            Errors::InvalidSignature(_) => {
+            Errors::InvalidSignature(invalid_signature) => {
+                error!("InvalidSignature={:?}", invalid_signature);
                 _reason = String::from("InvalidSignature");
             }
-            Errors::OrderTypeNotFound(_) => {
+            Errors::OrderTypeNotFound(order_type_not_found) => {
+                error!("OrderTypeNotFound={:?}", order_type_not_found);
                 _reason = String::from("OrderTypeNotFound");
             }
-            Errors::IncorrectStopLossDirection(_) => {
+            Errors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
+                error!(
+                    "IncorrectStopLossDirection={:?}",
+                    incorrect_stop_loss_direction
+                );
                 _reason = String::from("IncorrectStopLossDirection");
             }
-            Errors::ZeroStopLossOrderSize(_) => {
+            Errors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
+                error!("ZeroStopLossOrderSize={:?}", zero_stop_loss_order_size);
                 _reason = String::from("ZeroStopLossOrderSize");
             }
-            Errors::MatchOrderOutputsLengthMismatch(_) => {
+            Errors::MatchOrderOutputsLengthMismatch(match_order_outputs_length_mis_match) => {
+                error!(
+                    "MatchOrderOutputsLengthMismatch={:?}",
+                    match_order_outputs_length_mis_match
+                );
                 _reason = String::from("MatchOrderOutputsLengthMismatch");
             }
-            Errors::HigherExecutionPrice(_) => {
+            Errors::HigherExecutionPrice(higher_execution_price) => {
+                error!("HigherExecutionPrice={:?}", higher_execution_price);
                 _reason = String::from("HigherExecutionPrice");
             }
-            Errors::LowerExecutionPrice(_) => {
+            Errors::LowerExecutionPrice(lower_execution_price) => {
+                error!("LowerExecutionPrice={:?}", lower_execution_price);
                 _reason = String::from("LowerExecutionPrice");
             }
         },
@@ -487,8 +501,9 @@ pub fn extract_execute_batch_outputs(
                         10,
                     )
                     .unwrap(),
-                    reason: String::from("successfull").clone(),
-                    is_succesfull: true,
+                    result: Ok(true),
+                    //reason: String::from("successfull").clone(),
+                    //is_succesfull: true,
                 });
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
@@ -513,8 +528,7 @@ pub fn extract_execute_batch_outputs(
                         10,
                     )
                     .unwrap(),
-                    reason: String::from("Failed").clone(),
-                    is_succesfull: false,
+                    result: Err(String::from("Failed")),
                 });
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
@@ -541,8 +555,7 @@ pub fn extract_execute_batch_outputs(
                         10,
                     )
                     .unwrap(),
-                    reason: reason.clone(),
-                    is_succesfull: false,
+                    result: Err(reason.clone()),
                 });
             }
             _ => todo! {},
