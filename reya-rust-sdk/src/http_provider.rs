@@ -307,7 +307,7 @@ impl HttpProvider {
                 trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                batch_order.price_limit, //
+                price_limit, //
                 encoded_inputs );
             }
 
