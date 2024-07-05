@@ -278,18 +278,18 @@ impl HttpProvider {
                 // generate encoded core command for the input bytes of a stop_loss order
                 // The input byte structure is:
                 // {
+                //     is_long,
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
                 let trigger_price = batch_order.stop_price;
-                let bytes = (trigger_price, batch_order.price_limit)
-                    //let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
+                let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
                     .abi_encode_sequence();
 
                 encoded_inputs.clone_from(&bytes);
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![4u128]; // hardcode counter party id = 2 for production, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
 
             orders.push(OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -341,11 +341,7 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        // todo: p1: use the core proxy address from the sdk config
-        let proxy = CoreProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
-            provider,
-        );
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
 
         // Call the contract, retrieve the account owner information.
         let CoreProxy::getAccountOwnerReturn { _0 } =
