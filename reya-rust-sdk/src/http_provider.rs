@@ -301,12 +301,7 @@ impl HttpProvider {
                     price_limit = U256::MAX;
                 }
 
-                let bytes = (
-                    batch_order.is_long,
-                    trigger_price.to_string(),
-                    price_limit.to_string(),
-                )
-                    .abi_encode_sequence();
+                let bytes = (batch_order.is_long, trigger_price, price_limit).abi_encode_sequence();
 
                 encoded_inputs.clone_from(&bytes);
                 trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
