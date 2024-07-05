@@ -14,14 +14,20 @@ pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 ///
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct SdkConfig {
+    pub core_proxy_address: String,
     pub order_gateway_contract_address: String,
     pub passiv_perp_instrument_address: String,
     pub private_key: String,
     pub rpc_url: Url,
+    pub counter_party_id: u128,
 }
 
 pub fn load_enviroment_config() -> SdkConfig {
     dotenv().ok();
+
+    let core_proxy_address = env::var("CORE_PROXY_ADDRESS")
+        .expect("Core proxy address must be set as environment variable")
+        .to_lowercase();
 
     let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
         .expect("Order gateway contract address must be set as environment variable")
@@ -42,11 +48,20 @@ pub fn load_enviroment_config() -> SdkConfig {
             .as_str(),
     );
 
+    let counter_party_id = u128::from_str_radix(
+        env::var("COUNTER_PARTY_ID")
+            .expect("Counter party id 2 or 4 and must be set as environment variable")
+            .as_str(),
+        10,
+    );
+
     let sdk_config = SdkConfig {
+        core_proxy_address: core_proxy_address,
         order_gateway_contract_address: order_gateway_contract_address,
         passiv_perp_instrument_address: passiv_perp_instrument_address,
         private_key: private_key,
         rpc_url: rpc_url.unwrap(),
+        counter_party_id: counter_party_id.unwrap(),
     };
     return sdk_config;
 }
@@ -56,13 +71,16 @@ pub fn load_enviroment_config() -> SdkConfig {
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 
 // markets
+// todo: p1 add sol market
 pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
-pub const BTC_MARKET_ID: u32 = 2u32; //1=reya btc exchange
+pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
+pub const SOL_MARKET_ID: u32 = 3u32; //2=reya sol market
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     OrderGatewayProxy,
     "./transactions/abi/OrderGatewayProxy.json"
 );
@@ -71,8 +89,18 @@ sol!(
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     PassivePerpInstrumentProxy,
     "./transactions/abi/PassivePerpInstrumentProxy.json"
+);
+
+// Codegen from ABI file to interact with the reya core proxy contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    CoreProxy,
+    "./transactions/abi/CoreProxy.json"
 );
 
 #[allow(dead_code)]
@@ -105,11 +133,10 @@ pub struct BatchOrder {
     /// stop price only set when order type = stop_loss
     pub stop_price: I256,
     pub price_limit: U256,
+    pub is_long: bool,
     pub signer_address: Address,
     pub order_nonce: U256,
     pub eip712_signature: OrderGatewayProxy::EIP712Signature,
-    /// tells that the order is executed sucessfully on the chain, value is only used as return state
-    pub is_executed_successfully: bool,
 }
 
 #[allow(dead_code)]

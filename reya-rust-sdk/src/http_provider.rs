@@ -1,22 +1,32 @@
 use crate::data_types;
+use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use alloy::{
     network::EthereumWallet,
     primitives::{Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::eth::Filter,
-    rpc::types::Log,
+    rpc::types::TransactionReceipt,
     signers::local::PrivateKeySigner,
     sol,
+    sol_types::SolEvent,
 };
-use alloy_sol_types::SolValue;
+use alloy_primitives::hex::FromHex;
+use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
+use eyre::WrapErr;
 use tracing::*;
+
+pub enum BatchExecuteOutput {
+    SuccessfulOrder(OrderGatewayProxy::SuccessfulOrder),
+    FailedOrderMessage(OrderGatewayProxy::FailedOrderMessage),
+    FailedOrderBytes(OrderGatewayProxy::FailedOrderBytes),
+}
 
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
+    #[derive(Debug)]
     rUSDProxy,
     "./transactions/abi/rUsdProxy.json"
 );
@@ -94,7 +104,8 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let proxy = OrderGatewayProxy::new(
+        // todo: p1: use core proxy address (add to sdk config)
+        let proxy = CoreProxy::new(
             self.sdk_config.order_gateway_contract_address.parse()?,
             provider,
         );
@@ -241,8 +252,8 @@ impl HttpProvider {
     pub async fn execute_batch(
         &self,
         signer: PrivateKeySigner,
-        batch_orders: &mut Vec<data_types::BatchOrder>,
-    ) -> eyre::Result<B256> // return the transaction hash
+        batch_orders: &Vec<data_types::BatchOrder>,
+    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
         //
         let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
@@ -267,15 +278,18 @@ impl HttpProvider {
                 // generate encoded core command for the input bytes of a stop_loss order
                 // The input byte structure is:
                 // {
+                //     is_long,
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
                 let trigger_price = batch_order.stop_price;
-                let bytes = (trigger_price, batch_order.price_limit).abi_encode_sequence();
+                let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
+                    .abi_encode_sequence();
+
                 encoded_inputs.clone_from(&bytes);
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
 
             orders.push(OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -298,25 +312,9 @@ impl HttpProvider {
 
         if receipt.inner.is_success() {
             debug!("BatchExecute receipt:{:?}", receipt);
-            let logs_result = self.get_transaction_receipt(receipt.transaction_hash).await;
-            match logs_result {
-                Some(logs) => {
-                    let mut i = 0;
-                    for log in logs {
-                        let log_data = log.data();
-                        //
-                        info!("received log, index={}, len:{}", i, log_data.data.len());
-                        // todo check the log_data and make a correct discision if it is successful or not
-                        set_batch_order_state(batch_orders, i, true);
-
-                        i += 1;
-                    }
-                }
-                None => {}
-            }
         }
-        //
-        eyre::Ok(receipt.transaction_hash)
+
+        eyre::Ok(receipt)
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -343,62 +341,38 @@ impl HttpProvider {
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
-        let proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
-            provider,
-        );
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
 
         // Call the contract, retrieve the account owner information.
-        let OrderGatewayProxy::getAccountOwnerReturn { _0 } =
+        let CoreProxy::getAccountOwnerReturn { _0 } =
             proxy.getAccountOwner(account_id).call().await?;
 
         eyre::Ok(_0)
     }
 
-    pub async fn get_transaction(
-        &self,
-        tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> eyre::Result<Vec<u128>> {
-        let provider = ProviderBuilder::new()
-            .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
-
-        let transaction_response = provider.get_transaction_by_hash(tx_hash).await;
-
-        info!("Transaction reponse:{:?}", Some(transaction_response));
-
-        eyre::Ok(vec![])
-    }
-
     pub async fn get_transaction_receipt(
         &self,
-        _tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> Option<Vec<Log>> {
+        tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> Option<TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
 
-        // filter is not complete if we want e.g. the tx_log details of the tx_has provided
-        let filter = Filter::new().address(
-            self.sdk_config
-                .order_gateway_contract_address
-                .parse::<Address>()
-                .unwrap(),
-        );
-
-        let transaction_receipt_result = provider.get_logs(&filter).await;
+        let transaction_receipt_result = provider.get_transaction_receipt(tx_hash).await;
 
         match transaction_receipt_result {
             Ok(transaction_receipt) => {
-                info!("Transaction receipt:{:?}", transaction_receipt);
-                return Some(transaction_receipt);
+                info!(
+                    "Transaction receipt:{:?}",
+                    Some(transaction_receipt.clone())
+                );
+                return Some(transaction_receipt.clone()?);
             }
             Err(err) => {
-                error!("Failed to get logs:{:?}", err);
+                error!("{:?}", err);
+                return None;
             }
         }
-
-        return None;
     }
 
     ///
@@ -423,7 +397,92 @@ impl HttpProvider {
     }
 }
 
-fn set_batch_order_state(batch_orders: &mut Vec<data_types::BatchOrder>, i: usize, value: bool) {
-    let batch_order: &mut data_types::BatchOrder = &mut batch_orders[i];
-    batch_order.is_executed_successfully = value;
+pub fn extract_execute_batch_outputs(
+    batch_execute_receipt: &TransactionReceipt,
+) -> Vec<BatchExecuteOutput> {
+    let logs = batch_execute_receipt.inner.logs();
+
+    let mut result: Vec<BatchExecuteOutput> = Vec::new();
+
+    for log in logs {
+        let log_data = log.data();
+        // topic0 is the hash of the signature of the event.
+        let topic0 = log_data.topics()[0];
+
+        match topic0 {
+            // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
+            OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
+                let successful_order: OrderGatewayProxy::SuccessfulOrder =
+                    log.log_decode().unwrap().inner.data;
+
+                let execution_price_bytes = successful_order.output.clone();
+                let execution_price = U256::abi_decode(&execution_price_bytes, true).unwrap();
+
+                info!("Successful order, execution price:{:?}", execution_price);
+
+                // todo: p1: consider packaging the execution price into the output from the sdk for successful order
+                result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
+            }
+            OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
+                // todo: p2: check if we need to do any procesing for these type of errors
+                let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
+                    log.log_decode().unwrap().inner.data;
+
+                result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
+            }
+            OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
+                // decode the error reason string
+                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
+                    log.log_decode().unwrap().inner.data;
+
+                let reason_bytes = failed_order_bytes.reason.clone();
+
+                use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
+
+                // todo: p1: consider packaging the decoded errors into the output from the sdk
+                match Errors::abi_decode(&reason_bytes, true)
+                    .wrap_err("unknown OrderGatewayProxy error")
+                {
+                    Ok(decoded_error) => match decoded_error {
+                        Errors::NonceAlreadyUsed(_) => {
+                            info!("NonceAlreadyUsed");
+                        }
+                        Errors::SignerNotAuthorized(_) => {
+                            info!("SignerNotAuthorized");
+                        }
+                        Errors::InvalidSignature(_) => {
+                            info!("InvalidSignature");
+                        }
+                        Errors::OrderTypeNotFound(_) => {
+                            info!("OrderTypeNotFound");
+                        }
+                        Errors::IncorrectStopLossDirection(_) => {
+                            info!("IncorrectStopLossDirection");
+                        }
+                        Errors::ZeroStopLossOrderSize(_) => {
+                            info!("ZeroStopLossOrderSize");
+                        }
+                        Errors::MatchOrderOutputsLengthMismatch(_) => {
+                            info!("MatchOrderOutputsLengthMismatch");
+                        }
+                        Errors::HigherExecutionPrice(_) => {
+                            info!("HigherExecutionPrice");
+                        }
+                        Errors::LowerExecutionPrice(_) => {
+                            info!("LowerExecutionPrice");
+                        }
+                    },
+                    Err(err) => {
+                        error!("Error decoding reason string: {:?}", err);
+                        // todo: p2: handle the error as needed
+                    }
+                }
+
+                result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
+            }
+            _ => todo! {},
+        }
+    }
+
+    return result;
 }

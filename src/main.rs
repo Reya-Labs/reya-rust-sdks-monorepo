@@ -3,10 +3,14 @@ use alloy::{
     primitives::{address, I256, U256},
     signers::local::PrivateKeySigner,
 };
+use alloy_sol_types::SolValue;
 use clap::*;
+use core::result::Result::Ok;
 use dotenv::dotenv;
-use eyre;
-use reya_rust_sdk::{data_types, http_provider};
+use reya_rust_sdk::{
+    data_types,
+    http_provider::{self, extract_execute_batch_outputs},
+};
 use rust_decimal::{prelude::*, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -50,19 +54,6 @@ async fn _get_account_owner(account_id: u128, http_provider: &http_provider::Htt
     info!("get account owner address,:{:?}", account_owner_address);
 }
 
-async fn get_logs(tx_hash: String, http_provider: &http_provider::HttpProvider) {
-    let tx_logs_option = http_provider
-        .get_transaction_receipt(tx_hash.parse().unwrap())
-        .await;
-
-    match tx_logs_option {
-        Some(logs) => {
-            println!("tx logs:{:?}", logs);
-        }
-        None => {}
-    }
-}
-
 async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProvider) {
     let pool_price_result = http_provider.get_pool_price(market_id).await;
     match pool_price_result {
@@ -98,6 +89,62 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
     }
 }
 
+async fn get_execute_batch_receipt_logs(
+    batch_execute_hash: String,
+    http_provider: &http_provider::HttpProvider,
+) {
+    let batch_execute_receipt_option = http_provider
+        .get_transaction_receipt(batch_execute_hash.parse().unwrap())
+        .await;
+
+    match batch_execute_receipt_option {
+        Some(batch_execute_receipt) => {
+            let results = extract_execute_batch_outputs(&batch_execute_receipt);
+            for batch_execute_output in results {
+                match batch_execute_output {
+                    http_provider::BatchExecuteOutput::SuccessfulOrder(_successful_order) => {
+                        info!(
+                            "Order executed succesfully, block time:{:?} {:?}",
+                            _successful_order.blockTimestamp, _successful_order
+                        );
+                    }
+                    http_provider::BatchExecuteOutput::FailedOrderMessage(_failed_order_msg) => {
+                        error!(
+                            "Order execution msg failed with reason:{:?}, block time:{:?} {:?}",
+                            _failed_order_msg.reason, //
+                            _failed_order_msg.blockTimestamp,
+                            _failed_order_msg
+                        );
+                        let reason =
+                            String::abi_decode(_failed_order_msg.reason.clone().as_bytes(), false)
+                                .unwrap();
+
+                        error!("Error with following reason:{:?}", reason);
+                    }
+                    http_provider::BatchExecuteOutput::FailedOrderBytes(_failed_order_bytes) => {
+                        error!(
+                            "Order execution bytes failed with reason:{:?}, block time:{:?}, order index:{:?}, {:?}",
+                            _failed_order_bytes.reason.to_string(),
+                            _failed_order_bytes.blockTimestamp,
+                            _failed_order_bytes.orderIndex,
+                            _failed_order_bytes.order.nonce,
+                        );
+
+                        let reason =
+                            String::abi_decode(&_failed_order_bytes.reason, false).unwrap();
+
+                        error!(
+                            "OrderBytes failed, Error with following reason:{:?}",
+                            reason
+                        );
+                    }
+                }
+            }
+        }
+        None => {}
+    }
+}
+
 #[allow(dead_code)]
 async fn execute_order(
     sdk_config: &data_types::SdkConfig,
@@ -127,12 +174,15 @@ async fn execute_order(
 async fn execute_batch_orders(
     private_key: &String,
     http_provider: &http_provider::HttpProvider,
-    batch_orders: &mut Vec<data_types::BatchOrder>,
+    batch_orders: Vec<data_types::BatchOrder>,
 ) {
     let signer: PrivateKeySigner = private_key.parse().unwrap();
 
-    let transaction_hash = http_provider.execute_batch(signer, batch_orders).await;
-    info!("Execute batch orders, tx hash:{:?}", transaction_hash);
+    let transaction_receipt = http_provider.execute_batch(signer, &batch_orders).await;
+    info!(
+        "Execute batch orders, tx hash:{:?}",
+        transaction_receipt.unwrap().transaction_hash
+    );
 }
 
 #[allow(dead_code)]
@@ -155,12 +205,12 @@ async fn main() -> eyre::Result<()> {
                 .help("Gets the pool price for the required market id"),
         )
         .arg(
-            Arg::new("get-log")
-                .long("get-log")
+            Arg::new("get-execute-batch-receipt-outputs")
+                .long("get-execute-batch-receipt-outputs")
                 .action(ArgAction::Set)
-                .value_names(["tx_hash"])
+                .value_names(["batch_execute_hash"])
                 .num_args(1..)
-                .help("Gets the transaction logs by tx_hash"),
+                .help("Gets the batch execute outputs from event logs"),
         )
         .arg(
             Arg::new("batch-execute-orders")
@@ -201,11 +251,11 @@ async fn main() -> eyre::Result<()> {
             sdk_config.rpc_url, market_id
         );
         get_pool_price(market_id, &http_provider).await;
-    } else if matches.contains_id("get-log") {
+    } else if matches.contains_id("get-execute-batch-receipt-outputs") {
         // create account
         let packages: Vec<_> = matches
-            .get_many::<String>("get-log")
-            .expect("tx_hash")
+            .get_many::<String>("get-execute-batch-receipt-outputs")
+            .expect("batch_execute_hash")
             .map(|s| s.as_str())
             .collect();
 
@@ -213,9 +263,9 @@ async fn main() -> eyre::Result<()> {
         let http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
-        let tx = String::from(packages[0]); // tx_hash
-        println!("get log{} {}", sdk_config.rpc_url, tx);
-        get_logs(tx, &http_provider).await;
+        let batch_execute_hash = String::from(packages[0]); // batch_execute_hash
+        println!("get log{} {}", sdk_config.rpc_url, batch_execute_hash);
+        get_execute_batch_receipt_logs(batch_execute_hash, &http_provider).await;
     } else
     // handle batche execute request
     if matches.contains_id("batch-execute-orders") {
