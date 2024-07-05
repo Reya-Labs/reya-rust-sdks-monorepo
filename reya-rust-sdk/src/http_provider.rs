@@ -317,7 +317,7 @@ impl HttpProvider {
 
             let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
 
-            let conditional_order_detilas = OrderGatewayProxy::ConditionalOrderDetails {
+            let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
                 marketId: batch_order.market_id,
                 exchangeId: batch_order.exchange_id,
@@ -327,9 +327,9 @@ impl HttpProvider {
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             };
-            trace!("Conditional order details={:?}", conditional_order_detilas);
+            trace!("Conditional order details={:?}", conditional_order_details);
 
-            orders.push(conditional_order_detilas);
+            orders.push(conditional_order_details);
 
             signatures.push(batch_order.eip712_signature.clone());
         }
