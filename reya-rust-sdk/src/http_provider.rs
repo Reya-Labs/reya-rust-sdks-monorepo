@@ -4,23 +4,28 @@ use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use alloy::{
     network::EthereumWallet,
-    primitives::{Address, Bytes, B256, I256, U256},
+    primitives::{aliases, Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionReceipt,
     signers::local::PrivateKeySigner,
     sol,
     sol_types::SolEvent,
 };
-use alloy_primitives::hex::FromHex;
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
 use eyre::WrapErr;
+use rust_decimal::{prelude::*, Decimal};
+use std::result::Result;
 use tracing::*;
 
-pub enum BatchExecuteOutput {
-    SuccessfulOrder(OrderGatewayProxy::SuccessfulOrder),
-    FailedOrderMessage(OrderGatewayProxy::FailedOrderMessage),
-    FailedOrderBytes(OrderGatewayProxy::FailedOrderBytes),
+pub struct BatchExecuteOutput {
+    pub order_index: u32,
+    pub execution_price: Decimal,
+    pub order_nonce: aliases::TxNonce,
+    pub block_timestamp: aliases::BlockTimestamp,
+    pub result: Result<bool, String>,
+    pub reason: String,
+    pub is_succesfull: bool,
 }
 
 sol!(
@@ -397,6 +402,48 @@ impl HttpProvider {
     }
 }
 
+fn decode_reason(reason_bytes: Bytes) -> String {
+    use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
+
+    let mut _reason = String::from("Unkown");
+
+    match Errors::abi_decode(&reason_bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+        Ok(decoded_error) => match decoded_error {
+            Errors::NonceAlreadyUsed(_) => {
+                _reason = String::from("NonceAlreadyUsed");
+            }
+            Errors::SignerNotAuthorized(_) => {
+                _reason = String::from("SignerNotAuthorized");
+            }
+            Errors::InvalidSignature(_) => {
+                _reason = String::from("InvalidSignature");
+            }
+            Errors::OrderTypeNotFound(_) => {
+                _reason = String::from("OrderTypeNotFound");
+            }
+            Errors::IncorrectStopLossDirection(_) => {
+                _reason = String::from("IncorrectStopLossDirection");
+            }
+            Errors::ZeroStopLossOrderSize(_) => {
+                _reason = String::from("ZeroStopLossOrderSize");
+            }
+            Errors::MatchOrderOutputsLengthMismatch(_) => {
+                _reason = String::from("MatchOrderOutputsLengthMismatch");
+            }
+            Errors::HigherExecutionPrice(_) => {
+                _reason = String::from("HigherExecutionPrice");
+            }
+            Errors::LowerExecutionPrice(_) => {
+                _reason = String::from("LowerExecutionPrice");
+            }
+        },
+        Err(err) => {
+            _reason = format!("Error decoding reason string: {:?}", err);
+        }
+    }
+    return _reason;
+}
+
 pub fn extract_execute_batch_outputs(
     batch_execute_receipt: &TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
@@ -415,70 +462,88 @@ pub fn extract_execute_batch_outputs(
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
-                let execution_price_bytes = successful_order.output.clone();
-                let execution_price = U256::abi_decode(&execution_price_bytes, true).unwrap();
+                //let execution_price_bytes = ;
+                let execution_price_decode =
+                    U256::abi_decode(&successful_order.output.clone(), true).unwrap();
+                let execution_price = Decimal::from_str(&execution_price_decode.to_string())
+                    .unwrap()
+                    / data_types::PRICE_MULTIPLIER;
 
                 info!("Successful order, execution price:{:?}", execution_price);
-
-                // todo: p1: consider packaging the execution price into the output from the sdk for successful order
-                result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
+                result.push(BatchExecuteOutput {
+                    order_index: u32::from_str_radix(
+                        successful_order.orderIndex.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    execution_price: execution_price,
+                    order_nonce: aliases::TxNonce::from_str_radix(
+                        successful_order.order.nonce.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    block_timestamp: u64::from_str_radix(
+                        successful_order.blockTimestamp.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    reason: String::from("successfull").clone(),
+                    is_succesfull: true,
+                });
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
                 // todo: p2: check if we need to do any procesing for these type of errors
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
 
-                result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
+                result.push(BatchExecuteOutput {
+                    order_index: u32::from_str_radix(
+                        failed_order_message.orderIndex.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(), //
+                    execution_price: Decimal::from(0),
+                    order_nonce: aliases::TxNonce::from_str_radix(
+                        failed_order_message.order.nonce.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    block_timestamp: u64::from_str_radix(
+                        failed_order_message.blockTimestamp.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    reason: String::from("Failed").clone(),
+                    is_succesfull: false,
+                });
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
 
-                let reason_bytes = failed_order_bytes.reason.clone();
-
-                use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
-
-                // todo: p1: consider packaging the decoded errors into the output from the sdk
-                match Errors::abi_decode(&reason_bytes, true)
-                    .wrap_err("unknown OrderGatewayProxy error")
-                {
-                    Ok(decoded_error) => match decoded_error {
-                        Errors::NonceAlreadyUsed(_) => {
-                            info!("NonceAlreadyUsed");
-                        }
-                        Errors::SignerNotAuthorized(_) => {
-                            info!("SignerNotAuthorized");
-                        }
-                        Errors::InvalidSignature(_) => {
-                            info!("InvalidSignature");
-                        }
-                        Errors::OrderTypeNotFound(_) => {
-                            info!("OrderTypeNotFound");
-                        }
-                        Errors::IncorrectStopLossDirection(_) => {
-                            info!("IncorrectStopLossDirection");
-                        }
-                        Errors::ZeroStopLossOrderSize(_) => {
-                            info!("ZeroStopLossOrderSize");
-                        }
-                        Errors::MatchOrderOutputsLengthMismatch(_) => {
-                            info!("MatchOrderOutputsLengthMismatch");
-                        }
-                        Errors::HigherExecutionPrice(_) => {
-                            info!("HigherExecutionPrice");
-                        }
-                        Errors::LowerExecutionPrice(_) => {
-                            info!("LowerExecutionPrice");
-                        }
-                    },
-                    Err(err) => {
-                        error!("Error decoding reason string: {:?}", err);
-                        // todo: p2: handle the error as needed
-                    }
-                }
-
-                result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
+                let reason = decode_reason(failed_order_bytes.reason.clone());
+                result.push(BatchExecuteOutput {
+                    order_index: u32::from_str_radix(
+                        failed_order_bytes.orderIndex.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(), //
+                    //price_limit: successful_order.order.inputs // to get the price_limit we need to decode the inputs
+                    execution_price: Decimal::from(0),
+                    order_nonce: aliases::TxNonce::from_str_radix(
+                        failed_order_bytes.order.nonce.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    block_timestamp: u64::from_str_radix(
+                        failed_order_bytes.blockTimestamp.to_string().as_str(),
+                        10,
+                    )
+                    .unwrap(),
+                    reason: reason.clone(),
+                    is_succesfull: false,
+                });
             }
             _ => todo! {},
         }

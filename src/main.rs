@@ -101,7 +101,9 @@ async fn get_execute_batch_receipt_logs(
         Some(batch_execute_receipt) => {
             let results = extract_execute_batch_outputs(&batch_execute_receipt);
             for batch_execute_output in results {
-                match batch_execute_output {
+                
+                if batch_execute_output.is_succesfull{}
+
                     http_provider::BatchExecuteOutput::SuccessfulOrder(_successful_order) => {
                         info!(
                             "Order executed succesfully, block time:{:?} {:?}",
