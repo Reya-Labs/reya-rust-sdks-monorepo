@@ -122,6 +122,7 @@ pub enum OrderType {
 }
 
 /// order struct to execute orders in a batch
+#[derive(Debug)]
 pub struct BatchOrder {
     pub order_id: String,
     pub account_id: u128,
@@ -131,8 +132,8 @@ pub struct BatchOrder {
     /// side(+/- = buy/sell) + volume i256
     pub order_base: I256,
     /// stop price only set when order type = stop_loss
-    pub stop_price: U256,
-    pub price_limit: U256,
+    pub stop_price: Decimal,
+    pub price_limit: Decimal,
     pub is_long: bool,
     pub signer_address: Address,
     pub order_nonce: U256,
