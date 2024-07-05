@@ -283,7 +283,7 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
                 let trigger_price = batch_order.stop_price;
-                let multiplier: I256 = I256::from_dec_str("10").unwrap().pow(U256::from(18));
+                let multiplier: U256 = U256::from(10).pow(U256::from(18));
                 let trigger_price_wad = trigger_price * multiplier;
 
                 let bytes = (
