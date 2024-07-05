@@ -428,18 +428,25 @@ pub fn extract_execute_batch_outputs(
                 result.push(BatchExecuteOutput::SuccessfulOrder(successful_order));
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
-                // decode the error reason string
+                // todo: p2: check if we need to do any procesing for these type of errors
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
 
-                let reason_string = failed_order_message.reason.clone();
+                result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
+            }
+            OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
+                // decode the error reason string
+                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
+                    log.log_decode().unwrap().inner.data;
 
-                let bytes: [u8; 4] = FromHex::from_hex(reason_string.trim_matches('"')).unwrap();
+                let reason_bytes = failed_order_bytes.reason.clone();
 
                 use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
 
                 // todo: p1: consider packaging the decoded errors into the output from the sdk
-                match Errors::abi_decode(&bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+                match Errors::abi_decode(&reason_bytes, true)
+                    .wrap_err("unknown OrderGatewayProxy error")
+                {
                     Ok(decoded_error) => match decoded_error {
                         Errors::NonceAlreadyUsed(_) => {
                             info!("NonceAlreadyUsed");
@@ -475,17 +482,9 @@ pub fn extract_execute_batch_outputs(
                     }
                 }
 
-                result.push(BatchExecuteOutput::FailedOrderMessage(failed_order_message));
-            }
-            OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
-                // todo: p2: check if we need to do any procesing for these type of errors
-
-                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
-                    log.log_decode().unwrap().inner.data;
-
                 result.push(BatchExecuteOutput::FailedOrderBytes(failed_order_bytes));
             }
-            _ => (),
+            _ => todo! {},
         }
     }
 
