@@ -295,11 +295,12 @@ impl HttpProvider {
                     .to_string()
                     .parse()
                     .unwrap();
-                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
-                    .trunc() // take only the integer part
-                    .to_string()
-                    .parse()
-                    .unwrap();
+
+                let mut price_limit: U256 = U256::ZERO;
+                if batch_order.is_long {
+                    price_limit = U256::MAX;
+                }
+
                 let bytes = (
                     batch_order.is_long,
                     trigger_price.to_string(),
