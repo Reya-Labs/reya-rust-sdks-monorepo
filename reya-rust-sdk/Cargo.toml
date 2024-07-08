@@ -33,8 +33,13 @@ eyre = "0.6.12"
 # env
 dotenv = "0.15.0"
 
+
 # tracing
 tracing = "0.1.40"
+
+# log, define only in root cargo.toml 
+log = "0.4"
+simple_logger = "5"
 
 [lints]
 workspace = true
