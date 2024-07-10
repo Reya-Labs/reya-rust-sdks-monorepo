@@ -76,6 +76,8 @@ pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
 pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
 pub const SOL_MARKET_ID: u32 = 3u32; //2=reya sol market
 
+pub const MARKETS: [u32; 3] = [SOL_MARKET_ID, ETH_MARKET_ID, BTC_MARKET_ID];
+
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
     #[allow(missing_docs)]
