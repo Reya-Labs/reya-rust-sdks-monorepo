@@ -319,7 +319,7 @@ impl HttpProvider {
                 };
 
                 encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
-                
+
                 trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
