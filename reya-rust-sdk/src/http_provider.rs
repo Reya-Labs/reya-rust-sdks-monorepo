@@ -2,6 +2,7 @@ use crate::data_types;
 use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
+use crate::data_types::PRICE_MULTIPLIER;
 use alloy::{
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
@@ -274,7 +275,8 @@ impl HttpProvider {
         batch_orders: &Vec<data_types::BatchOrder>,
     ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
     {
-        //
+        trace!("Start Execute batch");
+
         let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
         let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
 
@@ -292,6 +294,9 @@ impl HttpProvider {
         // add all order ans signatures to the batch vector
         for i in 0..batch_orders.len() {
             let batch_order: &data_types::BatchOrder = &batch_orders[i];
+
+            trace!("Executing batch order:{:?}", batch_order);
+
             let mut encoded_inputs: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
                 // generate encoded core command for the input bytes of a stop_loss order
@@ -301,16 +306,34 @@ impl HttpProvider {
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
-                let trigger_price = batch_order.stop_price;
-                let bytes = (batch_order.is_long, trigger_price, batch_order.price_limit)
-                    .abi_encode_sequence();
+
+                // let multiplier: U256 = U256::from(10).pow(U256::from(18));
+                // let trigger_price_wad = trigger_price * multiplier;
+
+                let trigger_price: U256 = (batch_order.stop_price * PRICE_MULTIPLIER)
+                    .trunc() // take only the integer part
+                    .to_string()
+                    .parse()
+                    .unwrap();
+
+                let mut price_limit: U256 = U256::ZERO;
+                if batch_order.is_long {
+                    price_limit = U256::MAX;
+                }
+
+                let bytes = (batch_order.is_long, trigger_price, price_limit).abi_encode_sequence();
 
                 encoded_inputs.clone_from(&bytes);
+                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                batch_order.is_long, //
+                trigger_price, //
+                price_limit, //
+                encoded_inputs );
             }
 
             let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
 
-            orders.push(OrderGatewayProxy::ConditionalOrderDetails {
+            let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
                 marketId: batch_order.market_id,
                 exchangeId: batch_order.exchange_id,
@@ -319,19 +342,29 @@ impl HttpProvider {
                 inputs: Bytes::from(encoded_inputs),
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
-            });
+            };
+            trace!("Conditional order details={:?}", conditional_order_details);
+
+            orders.push(conditional_order_details);
 
             signatures.push(batch_order.eip712_signature.clone());
         }
 
+        trace!(
+            "Execution batch orders={:?}, signatures={:?}",
+            orders,
+            signatures
+        );
         let builder = proxy.batchExecute(orders, signatures);
         let transaction_result = builder.send().await?;
 
         let receipt = transaction_result.get_receipt().await?;
 
         if receipt.inner.is_success() {
-            debug!("BatchExecute receipt:{:?}", receipt);
+            trace!("BatchExecuted receipt={:?}", receipt);
         }
+
+        trace!("End Execute batch");
 
         eyre::Ok(receipt)
     }

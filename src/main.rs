@@ -105,8 +105,35 @@ async fn get_execute_batch_receipt_logs(
                             batch_execute_output
                         );
                     }
-                    Err(error_str) => {
-                        error!("Batch order failed {:?}", error_str);
+                    http_provider::ReasonError::NonceAlreadyUsed => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::SignerNotAuthorized => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::InvalidSignature => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::OrderTypeNotFound => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::IncorrectStopLossDirection => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::ZeroStopLossOrderSize => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::MatchOrderOutputsLengthMismatch => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::HigherExecutionPrice => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::LowerExecutionPrice => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
+                    }
+                    http_provider::ReasonError::UnknownError => {
+                        error!("{:?}", Some(batch_execute_output.reason_str));
                     }
                 }
             }
