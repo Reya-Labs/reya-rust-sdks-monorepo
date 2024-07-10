@@ -98,8 +98,8 @@ async fn get_execute_batch_receipt_logs(
         Some(batch_execute_receipt) => {
             let results = extract_execute_batch_outputs(&batch_execute_receipt);
             for batch_execute_output in results {
-                match batch_execute_output.result {
-                    Ok(_) => {
+                match batch_execute_output.reason_error {
+                    http_provider::ReasonError::NoError => {
                         info!(
                             "Order executed succesfully, block time:{:?}",
                             batch_execute_output
