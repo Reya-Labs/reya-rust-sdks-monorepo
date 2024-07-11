@@ -550,7 +550,6 @@ pub fn extract_execute_batch_outputs(
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
-                //let execution_price_bytes = ;
                 let execution_price_decode =
                     U256::abi_decode(&successful_order.output.clone(), true).unwrap();
                 let execution_price = Decimal::from_str(&execution_price_decode.to_string())
@@ -580,7 +579,7 @@ pub fn extract_execute_batch_outputs(
                 });
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
-                // todo: p2: check if we need to do any procesing for these type of errors
+                //
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
 
@@ -618,7 +617,6 @@ pub fn extract_execute_batch_outputs(
                         10,
                     )
                     .unwrap(), //
-                    //price_limit: successful_order.order.inputs // to get the price_limit we need to decode the inputs
                     execution_price: Decimal::from(0),
                     order_nonce: aliases::TxNonce::from_str_radix(
                         failed_order_bytes.order.nonce.to_string().as_str(),
