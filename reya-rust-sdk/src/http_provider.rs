@@ -20,7 +20,6 @@ use tracing::*;
 
 #[derive(Debug)]
 pub enum ReasonError {
-    NoError = 0,
     NonceAlreadyUsed,
     SignerNotAuthorized,
     InvalidSignature,
@@ -40,7 +39,7 @@ pub struct BatchExecuteOutput {
     pub order_nonce: aliases::TxNonce,
     pub block_timestamp: aliases::BlockTimestamp,
     pub reason_str: Option<String>,
-    pub reason_error: ReasonError,
+    pub reason_error: Option<ReasonError>,
 }
 
 sol!(
@@ -577,7 +576,7 @@ pub fn extract_execute_batch_outputs(
                     )
                     .unwrap(),
                     reason_str: None,
-                    reason_error: ReasonError::NoError,
+                    reason_error: None,
                 });
             }
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
@@ -603,7 +602,7 @@ pub fn extract_execute_batch_outputs(
                     )
                     .unwrap(),
                     reason_str: Some(String::from("Failed")),
-                    reason_error: ReasonError::UnknownError,
+                    reason_error: Some(ReasonError::UnknownError),
                 });
             }
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
@@ -632,7 +631,7 @@ pub fn extract_execute_batch_outputs(
                     )
                     .unwrap(),
                     reason_str: Some(reason.clone()),
-                    reason_error: reason_error,
+                    reason_error: Some(reason_error),
                 });
             }
             _ => todo! {},
