@@ -469,45 +469,42 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     match Errors::abi_decode(&reason_bytes, true).wrap_err("unknown OrderGatewayProxy error") {
         Ok(decoded_error) => match decoded_error {
             Errors::NonceAlreadyUsed(nonce_already_used) => {
-                error!("NonceAlreadyUsed={:?}", nonce_already_used);
+                error!("abi_decode_error={:?}", nonce_already_used);
                 return (
                     String::from("NonceAlreadyUsed"),
                     ReasonError::NonceAlreadyUsed,
                 );
             }
             Errors::SignerNotAuthorized(signer_not_authorized) => {
-                error!("SignerNotAuthorized={:?}", signer_not_authorized);
+                error!("abi_decode_error={:?}", signer_not_authorized);
                 return (
                     String::from("SignerNotAuthorized"),
                     ReasonError::SignerNotAuthorized,
                 );
             }
             Errors::InvalidSignature(invalid_signature) => {
-                error!("InvalidSignature={:?}", invalid_signature);
+                error!("abi_decode_error={:?}", invalid_signature);
                 return (
                     String::from("InvalidSignature"),
                     ReasonError::InvalidSignature,
                 );
             }
             Errors::OrderTypeNotFound(order_type_not_found) => {
-                error!("OrderTypeNotFound={:?}", order_type_not_found);
+                error!("abi_decode_error={:?}", order_type_not_found);
                 return (
                     String::from("OrderTypeNotFound"),
                     ReasonError::OrderTypeNotFound,
                 );
             }
             Errors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
-                error!(
-                    "IncorrectStopLossDirection={:?}",
-                    incorrect_stop_loss_direction
-                );
+                error!("abi_decode_error={:?}", incorrect_stop_loss_direction);
                 return (
                     String::from("IncorrectStopLossDirection"),
                     ReasonError::IncorrectStopLossDirection,
                 );
             }
             Errors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
-                error!("ZeroStopLossOrderSize={:?}", zero_stop_loss_order_size);
+                error!("abi_decode_error={:?}", zero_stop_loss_order_size);
                 return (
                     String::from("ZeroStopLossOrderSize"),
                     ReasonError::ZeroStopLossOrderSize,
@@ -515,7 +512,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
             }
             Errors::MatchOrderOutputsLengthMismatch(match_order_outputs_length_mis_match) => {
                 error!(
-                    "MatchOrderOutputsLengthMismatch={:?}",
+                    "abi_decode_error={:?}",
                     match_order_outputs_length_mis_match
                 );
                 return (
@@ -524,14 +521,14 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
                 );
             }
             Errors::HigherExecutionPrice(higher_execution_price) => {
-                error!("HigherExecutionPrice={:?}", higher_execution_price);
+                error!("abi_decode_error={:?}", higher_execution_price);
                 return (
                     String::from("HigherExecutionPrice"),
                     ReasonError::HigherExecutionPrice,
                 );
             }
             Errors::LowerExecutionPrice(lower_execution_price) => {
-                error!("LowerExecutionPrice={:?}", lower_execution_price);
+                error!("abi_decode_error={:?}", lower_execution_price);
                 return (
                     String::from("LowerExecutionPrice"),
                     ReasonError::LowerExecutionPrice,
@@ -550,8 +547,9 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
 pub fn extract_execute_batch_outputs(
     batch_execute_receipt: &TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
-    let logs = batch_execute_receipt.inner.logs();
+    debug!("Extracting batch outputs");
 
+    let logs = batch_execute_receipt.inner.logs();
     let mut result: Vec<BatchExecuteOutput> = Vec::new();
 
     for log in logs {
@@ -571,25 +569,35 @@ pub fn extract_execute_batch_outputs(
                     .unwrap()
                     / data_types::PRICE_MULTIPLIER;
 
-                info!("Successful order, execution price:{:?}", execution_price);
+                info!(
+                    "Successful order execution, execution price:{:?}",
+                    execution_price
+                );
+
                 result.push(BatchExecuteOutput {
-                    order_index: u32::from_str_radix(
-                        successful_order.orderIndex.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
+                    order_index: successful_order
+                        .orderIndex
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u32),
+
                     execution_price: execution_price,
-                    order_nonce: aliases::TxNonce::from_str_radix(
-                        successful_order.order.nonce.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
-                    block_timestamp: u64::from_str_radix(
-                        successful_order.blockTimestamp.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
+
+                    order_nonce: successful_order
+                        .order
+                        .nonce
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
+                    block_timestamp: successful_order
+                        .blockTimestamp
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
                     reason_str: None,
+
                     reason_error: None,
                 });
             }
@@ -599,23 +607,29 @@ pub fn extract_execute_batch_outputs(
                     log.log_decode().unwrap().inner.data;
 
                 result.push(BatchExecuteOutput {
-                    order_index: u32::from_str_radix(
-                        failed_order_message.orderIndex.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(), //
+                    order_index: failed_order_message
+                        .orderIndex
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u32),
+
                     execution_price: Decimal::from(0),
-                    order_nonce: aliases::TxNonce::from_str_radix(
-                        failed_order_message.order.nonce.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
-                    block_timestamp: u64::from_str_radix(
-                        failed_order_message.blockTimestamp.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
+
+                    order_nonce: failed_order_message
+                        .order
+                        .nonce
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
+                    block_timestamp: failed_order_message
+                        .blockTimestamp
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
                     reason_str: Some(String::from("Failed")),
+
                     reason_error: Some(ReasonError::UnknownError),
                 });
             }
@@ -627,27 +641,42 @@ pub fn extract_execute_batch_outputs(
                 let (reason, reason_error) = decode_reason(failed_order_bytes.reason.clone());
 
                 result.push(BatchExecuteOutput {
-                    order_index: u32::from_str_radix(
-                        failed_order_bytes.orderIndex.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(), //
+                    order_index: failed_order_bytes
+                        .orderIndex
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u32), //
+
                     execution_price: Decimal::from(0),
-                    order_nonce: aliases::TxNonce::from_str_radix(
-                        failed_order_bytes.order.nonce.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
-                    block_timestamp: u64::from_str_radix(
-                        failed_order_bytes.blockTimestamp.to_string().as_str(),
-                        10,
-                    )
-                    .unwrap(),
+
+                    order_nonce: failed_order_bytes
+                        .order
+                        .nonce
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
+                    block_timestamp: failed_order_bytes
+                        .blockTimestamp
+                        .to_string()
+                        .parse()
+                        .unwrap_or(0u64),
+
                     reason_str: Some(reason.clone()),
+
                     reason_error: Some(reason_error),
                 });
             }
-            _ => todo! {},
+            OrderGatewayProxy::ConditionalOrderExecuted::SIGNATURE_HASH => {
+                let conditional_order_executed: OrderGatewayProxy::ConditionalOrderExecuted =
+                    log.log_decode().unwrap().inner.data;
+                debug!(
+                    "ConditionalOrderExecuted is executed sucessfully {:?}",
+                    conditional_order_executed
+                );
+            }
+            _ => { // unknown type here
+            }
         }
     }
 
