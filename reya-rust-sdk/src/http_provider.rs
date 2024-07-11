@@ -3,6 +3,7 @@ use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::PRICE_MULTIPLIER;
+
 use alloy::{
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
@@ -50,6 +51,18 @@ sol!(
     "./transactions/abi/rUsdProxy.json"
 );
 
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    /// batch execution input bytes structure definition
+    struct BatchExecuteInputBytes
+    {
+        bool is_long;
+        uint256 trigger_price;  // stop_price!
+        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+    }
+);
 /**
  * HTTP Provider
  */
@@ -258,7 +271,7 @@ impl HttpProvider {
     ///    signers::wallet::PrivateKeySigner,
     /// };
     ///
-    ///     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
+    /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
     /// let signer: PrivateKeySigner = private_key.parse().unwrap();
     ///
@@ -296,7 +309,7 @@ impl HttpProvider {
 
             trace!("Executing batch order:{:?}", batch_order);
 
-            let mut encoded_inputs: Vec<u8> = Vec::new();
+            let mut encoded_input_bytes: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss {
                 // generate encoded core command for the input bytes of a stop_loss order
                 // The input byte structure is:
@@ -305,9 +318,6 @@ impl HttpProvider {
                 //     trigger_price, // stop_price!
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
-
-                // let multiplier: U256 = U256::from(10).pow(U256::from(18));
-                // let trigger_price_wad = trigger_price * multiplier;
 
                 let trigger_price: U256 = (batch_order.stop_price * PRICE_MULTIPLIER)
                     .trunc() // take only the integer part
@@ -320,14 +330,19 @@ impl HttpProvider {
                     price_limit = U256::MAX;
                 }
 
-                let bytes = (batch_order.is_long, trigger_price, price_limit).abi_encode_sequence();
+                let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
+                    is_long: batch_order.is_long,
+                    trigger_price: trigger_price,
+                    price_limit: price_limit,
+                };
 
-                encoded_inputs.clone_from(&bytes);
+                encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
+
                 trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                price_limit, //
-                encoded_inputs );
+                batch_order.price_limit, //
+                encoded_input_bytes );
             }
 
             let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
@@ -338,7 +353,7 @@ impl HttpProvider {
                 exchangeId: batch_order.exchange_id,
                 counterpartyAccountIds: counterparty_account_ids.clone(),
                 orderType: batch_order.order_type as u8,
-                inputs: Bytes::from(encoded_inputs),
+                inputs: Bytes::from(encoded_input_bytes),
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             };
@@ -637,4 +652,41 @@ pub fn extract_execute_batch_outputs(
     }
 
     return result;
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use rust_decimal::Decimal;
+    use rust_decimal_macros::dec;
+
+    #[test]
+    fn test_batch_execute_input_bytes_encoding() {
+        println!("Testing batch execute input bytes encoding");
+        let stop_price: Decimal = dec!(1_000);
+        let trigger_price: U256 = (stop_price * PRICE_MULTIPLIER)
+            .trunc() // take only the integer part
+            .to_string()
+            .parse()
+            .unwrap();
+
+        let price_limit: U256 = U256::ZERO;
+        let is_long: bool = true;
+        let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
+            is_long: is_long,
+            trigger_price: trigger_price,
+            price_limit: price_limit,
+        };
+
+        let encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
+        println!("Input bytes:{:?}", encoded_input_bytes);
+
+        // alternative way of encoding the input bytes
+        let bytes = (is_long, trigger_price, price_limit).abi_encode_sequence();
+
+        let mut encoded_inputs: Vec<u8> = Vec::new();
+        encoded_inputs.clone_from(&bytes);
+        assert_eq!(encoded_input_bytes, encoded_inputs);
+    }
 }
