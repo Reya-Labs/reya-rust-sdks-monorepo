@@ -81,7 +81,7 @@ async fn get_pool_price(market_id: u128, http_provider: &http_provider::HttpProv
             }
         }
         Err(err) => {
-            error!("Failed to retreive pool price {:?}", err);
+            error!("Failed to retrieve pool price {:?}", err);
         }
     }
 }
