@@ -1,8 +1,8 @@
 use crate::data_types;
-use crate::data_types::CoreErrors::CoreErrorsErrors;
 use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
+use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::PRICE_MULTIPLIER;
 
 use alloy::{
@@ -31,7 +31,6 @@ pub enum ReasonError {
     MatchOrderOutputsLengthMismatch,
     HigherExecutionPrice,
     LowerExecutionPrice,
-    AccountBelowIM,
     UnknownError,
 }
 
@@ -465,122 +464,90 @@ impl HttpProvider {
     }
 }
 
-fn decode_order_gw_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
-
+fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     debug!("reason string:{:?}", reason_bytes);
-    match Errors::abi_decode(&reason_bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
+        .wrap_err("unknown OrderGatewayProxy error")
+    {
         Ok(decoded_error) => match decoded_error {
-            Errors::NonceAlreadyUsed(nonce_already_used) => {
+            RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
                 error!("reason error={:?}", nonce_already_used);
                 return (
                     String::from("NonceAlreadyUsed"),
                     ReasonError::NonceAlreadyUsed,
                 );
             }
-            Errors::SignerNotAuthorized(signer_not_authorized) => {
+            RpcErrorsErrors::SignerNotAuthorized(signer_not_authorized) => {
                 error!("reason error={:?}", signer_not_authorized);
                 return (
                     String::from("SignerNotAuthorized"),
                     ReasonError::SignerNotAuthorized,
                 );
             }
-            Errors::InvalidSignature(invalid_signature) => {
+            RpcErrorsErrors::InvalidSignature(invalid_signature) => {
                 error!("reason error={:?}", invalid_signature);
                 return (
                     String::from("InvalidSignature"),
                     ReasonError::InvalidSignature,
                 );
             }
-            Errors::OrderTypeNotFound(order_type_not_found) => {
+            RpcErrorsErrors::OrderTypeNotFound(order_type_not_found) => {
                 error!("reason error={:?}", order_type_not_found);
                 return (
                     String::from("OrderTypeNotFound"),
                     ReasonError::OrderTypeNotFound,
                 );
             }
-            Errors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
+            RpcErrorsErrors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
                 error!("reason error={:?}", incorrect_stop_loss_direction);
                 return (
                     String::from("IncorrectStopLossDirection"),
                     ReasonError::IncorrectStopLossDirection,
                 );
             }
-            Errors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
+            RpcErrorsErrors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
                 error!("reason error={:?}", zero_stop_loss_order_size);
                 return (
                     String::from("ZeroStopLossOrderSize"),
                     ReasonError::ZeroStopLossOrderSize,
                 );
             }
-            Errors::MatchOrderOutputsLengthMismatch(match_order_outputs_length_mis_match) => {
+            RpcErrorsErrors::MatchOrderOutputsLengthMismatch(
+                match_order_outputs_length_mis_match,
+            ) => {
                 error!("reason error={:?}", match_order_outputs_length_mis_match);
                 return (
                     String::from("MatchOrderOutputsLengthMismatch"),
                     ReasonError::MatchOrderOutputsLengthMismatch,
                 );
             }
-            Errors::HigherExecutionPrice(higher_execution_price) => {
+            RpcErrorsErrors::HigherExecutionPrice(higher_execution_price) => {
                 error!("reason error={:?}", higher_execution_price);
                 return (
                     String::from("HigherExecutionPrice"),
                     ReasonError::HigherExecutionPrice,
                 );
             }
-            Errors::LowerExecutionPrice(lower_execution_price) => {
+            RpcErrorsErrors::LowerExecutionPrice(lower_execution_price) => {
                 error!("reason error={:?}", lower_execution_price);
                 return (
                     String::from("LowerExecutionPrice"),
                     ReasonError::LowerExecutionPrice,
                 );
             }
-        },
-        Err(err) => {
-            return (
-                format!("Error OrderGateway decoding reason string: {:?}", err),
-                ReasonError::UnknownError,
-            );
-        }
-    }
-}
-
-fn decode_core_proxy_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    match CoreErrorsErrors::abi_decode(&reason_bytes, true).wrap_err("Unknown CoreProxy error") {
-        Ok(core_gw_decoded_error) => match core_gw_decoded_error {
-            CoreErrorsErrors::AccountBelowIM(account_below_im) => {
-                error!("reason error={:?}", account_below_im);
-                return (String::from("AccountBelowIM"), ReasonError::AccountBelowIM);
-            }
             _ => {
-                info!("Core gw error:{:?}", core_gw_decoded_error);
-
+                info!("RPC error:{:?}", decoded_error);
                 return (
-                    format!("Core gateway error{:?}", core_gw_decoded_error),
+                    format!("RPC error={:?}", decoded_error),
                     ReasonError::UnknownError,
                 );
             }
         },
         Err(err) => {
-            error!("Core proxy decode error:{:?}", err);
             return (
-                format!("Error decoding Core Gw reason string: {:?}", err),
+                format!("Error decoding reason string={:?}", err),
                 ReasonError::UnknownError,
             );
-        }
-    }
-}
-
-/// there a more source that provide error in the reason string, one is the OrderGateway and seocnd is the CoreProxy
-/// First try the order gateway, because that one is mostly used, if this failes with UnknownError we try the core proxy error
-fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    let (reason_string, reason_error) = decode_order_gw_reason(reason_bytes.clone());
-    match reason_error {
-        ReasonError::UnknownError => {
-            // try core proxy
-            return decode_core_proxy_reason(reason_bytes);
-        }
-        _ => {
-            return (reason_string, reason_error);
         }
     }
 }

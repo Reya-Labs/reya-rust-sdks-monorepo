@@ -109,8 +109,9 @@ sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
     #[derive(Debug)]
-    CoreErrors,
-    "./transactions/abi/CoreErrors.json"
+    // collection of all rcp errors from Core, PassivePerp and OrderGateway
+    RpcErrors,
+    "./transactions/abi/Errors.json"
 );
 
 #[allow(dead_code)]

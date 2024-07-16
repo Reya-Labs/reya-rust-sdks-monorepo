@@ -1748,5 +1748,1060 @@
     "type": "error",
     "name": "NoCounterpartiesInMatchOrder",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "HigherExecutionPrice",
+    "inputs": [
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "priceLimit",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "IncorrectStopLossDirection",
+    "inputs": [
+      {
+        "name": "baseDelta",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "isLongOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidSignature",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct ConditionalOrderDetails",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "counterpartyAccountIds",
+            "type": "uint128[]",
+            "internalType": "uint128[]"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8",
+            "internalType": "enum OrderType"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "tuple",
+        "internalType": "struct EIP712Signature",
+        "components": [
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LowerExecutionPrice",
+    "inputs": [
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "priceLimit",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MatchOrderOutputsLengthMismatch",
+    "inputs": [
+      {
+        "name": "outputsLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NonceAlreadyUsed",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct ConditionalOrderDetails",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "counterpartyAccountIds",
+            "type": "uint128[]",
+            "internalType": "uint128[]"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8",
+            "internalType": "enum OrderType"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "tuple",
+        "internalType": "struct EIP712Signature",
+        "components": [
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OrderTypeNotFound",
+    "inputs": [
+      {
+        "name": "orderType",
+        "type": "uint8",
+        "internalType": "enum OrderType"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SignerNotAuthorized",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct ConditionalOrderDetails",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "counterpartyAccountIds",
+            "type": "uint128[]",
+            "internalType": "uint128[]"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8",
+            "internalType": "enum OrderType"
+          },
+          {
+            "name": "inputs",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "signer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "signature",
+        "type": "tuple",
+        "internalType": "struct EIP712Signature",
+        "components": [
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroStopLossOrderSize",
+    "inputs": [
+      {
+        "name": "stopLossOrder",
+        "type": "tuple",
+        "internalType": "struct StopLossOrderDetails",
+        "components": [
+          {
+            "name": "accountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "exchangeId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "triggerPrice",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "priceLimit",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "isLongOrder",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidMarketConfiguration",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "config",
+        "type": "tuple",
+        "internalType": "struct MarketConfigurationData",
+        "components": [
+          {
+            "name": "riskMatrixIndex",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxOpenBase",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "velocityMultiplier",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "oracleNodeId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "mtmWindow",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "dutchConfig",
+            "type": "tuple",
+            "internalType": "struct DutchConfiguration",
+            "components": [
+              {
+                "name": "lambda",
+                "type": "uint256",
+                "internalType": "UD60x18"
+              },
+              {
+                "name": "minBase",
+                "type": "uint256",
+                "internalType": "UD60x18"
+              }
+            ]
+          },
+          {
+            "name": "slippageParams",
+            "type": "tuple",
+            "internalType": "struct SlippageParams",
+            "components": [
+              {
+                "name": "phi",
+                "type": "uint256",
+                "internalType": "UD60x18"
+              },
+              {
+                "name": "beta",
+                "type": "uint256",
+                "internalType": "UD60x18"
+              }
+            ]
+          },
+          {
+            "name": "minimumOrderBase",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "baseSpacing",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "priceSpacing",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "depthFactor",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "maxExposureFactor",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          },
+          {
+            "name": "maxPSlippage",
+            "type": "uint256",
+            "internalType": "UD60x18"
+          }
+        ]
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MarketNotFound",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_MulDiv18_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "y",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueAlreadyInSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ValueNotInSet",
+    "inputs": []
+  },
+  {
+    "type": "function",
+    "name": "acceptOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "error",
+    "name": "ImplementationIsSterile",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NoChange",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotAContract",
+    "inputs": [
+      {
+        "name": "contr",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotNominated",
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UpgradeSimulationFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ComplexQuadraticRoots",
+    "inputs": [
+      {
+        "name": "a",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "b",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "c",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ExceededMaxExposure",
+    "inputs": [
+      {
+        "name": "netExposure",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "maxExposure",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "maxExposureFactor",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ExceededPSlippage",
+    "inputs": [
+      {
+        "name": "pSlippage",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "maxPSlippage",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OverflowInt256ToUint256",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OverflowUint256ToInt256",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_MulDiv_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "y",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "denominator",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Abs_MinSD59x18",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Div_InputTooSmall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Div_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "y",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_IntoUD60x18_Underflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Mul_InputTooSmall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Mul_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "y",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Sqrt_NegativeInput",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Sqrt_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_UD60x18_IntoSD59x18_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroQuadraticCoefficient",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DustyOrderSize",
+    "inputs": [
+      {
+        "name": "absOrderBase",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "absBasePostOrder",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "baseSpacing",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ExchangeRebateParameterTooLarge",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FeatureUnavailable",
+    "inputs": [
+      {
+        "name": "which",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FeeParameterTooLarge",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidLiquidationType",
+    "inputs": [
+      {
+        "name": "liquidationType",
+        "type": "uint8",
+        "internalType": "enum LiquidationType"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidOrderCounterparties",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidUnwindBase",
+    "inputs": [
+      {
+        "name": "currentBase",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "unwindBase",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LiquidationAgainstPassivePool",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LiquidationIncreasesOpenInterest",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct LiquidationOrder",
+        "components": [
+          {
+            "name": "liquidatableAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "liquidatorAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "deltaBase",
+            "type": "int256",
+            "internalType": "SD59x18"
+          }
+        ]
+      },
+      {
+        "name": "openInterestDelta",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LiquidationOrderSizeTooLarge",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct LiquidationOrder",
+        "components": [
+          {
+            "name": "liquidatableAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "liquidatorAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "deltaBase",
+            "type": "int256",
+            "internalType": "SD59x18"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MaxDutchLiquidationVolumeExceeded",
+    "inputs": [
+      {
+        "name": "requestedLiquidatedBase",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "maxVolume",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NegativeOpenInterest",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NegativePrice",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyCoreProxy",
+    "inputs": [
+      {
+        "name": "msgSender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OpenInterestExceeded",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Exp2_InputTooBig",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_SD59x18_Log_InputTooSmall",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "int256",
+        "internalType": "SD59x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PRBMath_UD60x18_Sqrt_Overflow",
+    "inputs": [
+      {
+        "name": "x",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PoolRebateParameterTooLarge",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SelfLiquidation",
+    "inputs": [
+      {
+        "name": "accountId",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SmallOrderSize",
+    "inputs": [
+      {
+        "name": "absBasePostOrder",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "minimumOrderBase",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnacceptableOrderPrice",
+    "inputs": [
+      {
+        "name": "executedOrderPrice",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "orderPriceLimit",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WrongLiquidationDirection",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct LiquidationOrder",
+        "components": [
+          {
+            "name": "liquidatableAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "liquidatorAccountId",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "deltaBase",
+            "type": "int256",
+            "internalType": "SD59x18"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroOrderSize",
+    "inputs": []
   }
 ]
