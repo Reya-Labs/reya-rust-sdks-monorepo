@@ -105,6 +105,14 @@ sol!(
     "./transactions/abi/CoreProxy.json"
 );
 
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    CoreErrors,
+    "./transactions/abi/CoreErrors.json"
+);
+
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug)]
