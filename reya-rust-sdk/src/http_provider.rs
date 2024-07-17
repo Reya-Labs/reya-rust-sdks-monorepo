@@ -582,6 +582,7 @@ pub fn extract_execute_batch_outputs(
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
+                //decode and convert execution price to a Decimal
                 let execution_price_decode =
                     U256::abi_decode(&successful_order.output.clone(), true).unwrap();
                 let execution_price = Decimal::from_str(&execution_price_decode.to_string())
@@ -589,8 +590,8 @@ pub fn extract_execute_batch_outputs(
                     / data_types::PRICE_MULTIPLIER;
 
                 info!(
-                    "Successful order execution, execution price:{:?}",
-                    execution_price
+                    "Successful order execution, execution price:{:?}, nonce={:?}",
+                    execution_price, successful_order.order.nonce
                 );
 
                 result.push(BatchExecuteOutput {
@@ -614,12 +615,12 @@ pub fn extract_execute_batch_outputs(
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
-
+                    // no errors here
                     reason_str: None,
-
                     reason_error: None,
                 });
             }
+            // failed order mesg parsing
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
                 //
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
@@ -648,10 +649,10 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u64),
 
                     reason_str: Some(String::from("Failed")),
-
                     reason_error: Some(ReasonError::UnknownError),
                 });
             }
+            // failed order bytes parsing
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
@@ -682,7 +683,6 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u64),
 
                     reason_str: Some(reason.clone()),
-
                     reason_error: Some(reason_error),
                 });
             }
@@ -694,7 +694,7 @@ pub fn extract_execute_batch_outputs(
                     conditional_order_executed
                 );
             }
-            _ => { // unknown type here
+            _ => { // unknown type here are ignored
             }
         }
     }
