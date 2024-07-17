@@ -109,35 +109,12 @@ async fn get_execute_batch_receipt_logs(
                     Some(reason_error_code) => {
                         //
                         match reason_error_code {
-                            http_provider::ReasonError::NonceAlreadyUsed => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::SignerNotAuthorized => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::InvalidSignature => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::OrderTypeNotFound => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::IncorrectStopLossDirection => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::ZeroStopLossOrderSize => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::MatchOrderOutputsLengthMismatch => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::HigherExecutionPrice => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::LowerExecutionPrice => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
-                            }
-                            http_provider::ReasonError::UnknownError => {
-                                error!("{:?}", Some(batch_execute_output.reason_str));
+                            _ => {
+                                error!(
+                                    "ErrorCode={:?}, reason={:?}",
+                                    reason_error_code,
+                                    Some(batch_execute_output.reason_str)
+                                );
                             }
                         }
                     }

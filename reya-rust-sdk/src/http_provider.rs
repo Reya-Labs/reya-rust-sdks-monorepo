@@ -2,6 +2,7 @@ use crate::data_types;
 use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
+use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::PRICE_MULTIPLIER;
 
 use alloy::{
@@ -31,6 +32,7 @@ pub enum ReasonError {
     HigherExecutionPrice,
     LowerExecutionPrice,
     UnknownError,
+    DecodingError,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ pub struct BatchExecuteOutput {
     pub execution_price: Decimal,
     pub order_nonce: aliases::TxNonce,
     pub block_timestamp: aliases::BlockTimestamp,
+    // optional error details will only be set if an error occured
     pub reason_str: Option<String>,
     pub reason_error: Option<ReasonError>,
 }
@@ -463,87 +466,103 @@ impl HttpProvider {
     }
 }
 
+///
+/// decode the reason string to an Error
+///
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    use OrderGatewayProxy::OrderGatewayProxyErrors as Errors;
+    debug!("reason string:{:?}", reason_bytes);
 
-    match Errors::abi_decode(&reason_bytes, true).wrap_err("unknown OrderGatewayProxy error") {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
+        .wrap_err("Failed to decode reason_string")
+    {
         Ok(decoded_error) => match decoded_error {
-            Errors::NonceAlreadyUsed(nonce_already_used) => {
-                error!("abi_decode_error={:?}", nonce_already_used);
+            RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
+                error!("reason error={:?}", nonce_already_used);
                 return (
                     String::from("NonceAlreadyUsed"),
                     ReasonError::NonceAlreadyUsed,
                 );
             }
-            Errors::SignerNotAuthorized(signer_not_authorized) => {
-                error!("abi_decode_error={:?}", signer_not_authorized);
+            RpcErrorsErrors::SignerNotAuthorized(signer_not_authorized) => {
+                error!("reason error={:?}", signer_not_authorized);
                 return (
                     String::from("SignerNotAuthorized"),
                     ReasonError::SignerNotAuthorized,
                 );
             }
-            Errors::InvalidSignature(invalid_signature) => {
-                error!("abi_decode_error={:?}", invalid_signature);
+            RpcErrorsErrors::InvalidSignature(invalid_signature) => {
+                error!("reason error={:?}", invalid_signature);
                 return (
                     String::from("InvalidSignature"),
                     ReasonError::InvalidSignature,
                 );
             }
-            Errors::OrderTypeNotFound(order_type_not_found) => {
-                error!("abi_decode_error={:?}", order_type_not_found);
+            RpcErrorsErrors::OrderTypeNotFound(order_type_not_found) => {
+                error!("reason error={:?}", order_type_not_found);
                 return (
                     String::from("OrderTypeNotFound"),
                     ReasonError::OrderTypeNotFound,
                 );
             }
-            Errors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
-                error!("abi_decode_error={:?}", incorrect_stop_loss_direction);
+            RpcErrorsErrors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
+                error!("reason error={:?}", incorrect_stop_loss_direction);
                 return (
                     String::from("IncorrectStopLossDirection"),
                     ReasonError::IncorrectStopLossDirection,
                 );
             }
-            Errors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
-                error!("abi_decode_error={:?}", zero_stop_loss_order_size);
+            RpcErrorsErrors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
+                error!("reason error={:?}", zero_stop_loss_order_size);
                 return (
                     String::from("ZeroStopLossOrderSize"),
                     ReasonError::ZeroStopLossOrderSize,
                 );
             }
-            Errors::MatchOrderOutputsLengthMismatch(match_order_outputs_length_mis_match) => {
-                error!(
-                    "abi_decode_error={:?}",
-                    match_order_outputs_length_mis_match
-                );
+            RpcErrorsErrors::MatchOrderOutputsLengthMismatch(
+                match_order_outputs_length_mis_match,
+            ) => {
+                error!("reason error={:?}", match_order_outputs_length_mis_match);
                 return (
                     String::from("MatchOrderOutputsLengthMismatch"),
                     ReasonError::MatchOrderOutputsLengthMismatch,
                 );
             }
-            Errors::HigherExecutionPrice(higher_execution_price) => {
-                error!("abi_decode_error={:?}", higher_execution_price);
+            RpcErrorsErrors::HigherExecutionPrice(higher_execution_price) => {
+                error!("reason error={:?}", higher_execution_price);
                 return (
                     String::from("HigherExecutionPrice"),
                     ReasonError::HigherExecutionPrice,
                 );
             }
-            Errors::LowerExecutionPrice(lower_execution_price) => {
-                error!("abi_decode_error={:?}", lower_execution_price);
+            RpcErrorsErrors::LowerExecutionPrice(lower_execution_price) => {
+                error!("reason error={:?}", lower_execution_price);
                 return (
                     String::from("LowerExecutionPrice"),
                     ReasonError::LowerExecutionPrice,
                 );
             }
+            // all other errors are mapped to UnknownError
+            _ => {
+                info!("RPC error:{:?}", decoded_error);
+                return (
+                    format!("RPC error={:?}", decoded_error),
+                    ReasonError::UnknownError,
+                );
+            }
         },
         Err(err) => {
-            return (
-                format!("Error decoding reason string: {:?}", err),
-                ReasonError::UnknownError,
-            );
+            return (format!("Error={:?}", err), ReasonError::DecodingError);
         }
     }
 }
 
+/// Extract the batch execution output bytes, received from the transaction logs
+///
+/// The fn will return a vector with BatchExecuteOutputs that should match the number of orders in an executed batch
+///
+/// and will provide details on the executed order if successfull or what kind of error it has.
+///
+/// On success it will also provide details on the execution like, executed price, block time etc... see BatchExecuteOutput for details
 pub fn extract_execute_batch_outputs(
     batch_execute_receipt: &TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
@@ -563,6 +582,7 @@ pub fn extract_execute_batch_outputs(
                 let successful_order: OrderGatewayProxy::SuccessfulOrder =
                     log.log_decode().unwrap().inner.data;
 
+                //decode and convert execution price to a Decimal
                 let execution_price_decode =
                     U256::abi_decode(&successful_order.output.clone(), true).unwrap();
                 let execution_price = Decimal::from_str(&execution_price_decode.to_string())
@@ -570,8 +590,8 @@ pub fn extract_execute_batch_outputs(
                     / data_types::PRICE_MULTIPLIER;
 
                 info!(
-                    "Successful order execution, execution price:{:?}",
-                    execution_price
+                    "Successful order execution, execution price:{:?}, nonce={:?}",
+                    execution_price, successful_order.order.nonce
                 );
 
                 result.push(BatchExecuteOutput {
@@ -595,12 +615,12 @@ pub fn extract_execute_batch_outputs(
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
-
+                    // no errors here
                     reason_str: None,
-
                     reason_error: None,
                 });
             }
+            // failed order mesg parsing
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
                 //
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
@@ -629,10 +649,10 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u64),
 
                     reason_str: Some(String::from("Failed")),
-
                     reason_error: Some(ReasonError::UnknownError),
                 });
             }
+            // failed order bytes parsing
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
@@ -663,7 +683,6 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u64),
 
                     reason_str: Some(reason.clone()),
-
                     reason_error: Some(reason_error),
                 });
             }
@@ -675,7 +694,7 @@ pub fn extract_execute_batch_outputs(
                     conditional_order_executed
                 );
             }
-            _ => { // unknown type here
+            _ => { // unknown type here are ignored
             }
         }
     }

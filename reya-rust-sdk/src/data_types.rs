@@ -105,6 +105,15 @@ sol!(
     "./transactions/abi/CoreProxy.json"
 );
 
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    // collection of all rcp errors from Core, PassivePerp and OrderGateway
+    RpcErrors,
+    "./transactions/abi/Errors.json"
+);
+
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug)]
