@@ -32,6 +32,7 @@ pub enum ReasonError {
     HigherExecutionPrice,
     LowerExecutionPrice,
     UnknownError,
+    DecodingError,
 }
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ pub struct BatchExecuteOutput {
     pub execution_price: Decimal,
     pub order_nonce: aliases::TxNonce,
     pub block_timestamp: aliases::BlockTimestamp,
+    // optional error details will only be set if an error occured
     pub reason_str: Option<String>,
     pub reason_error: Option<ReasonError>,
 }
@@ -464,10 +466,14 @@ impl HttpProvider {
     }
 }
 
+///
+/// decode the reason string to an Error
+///
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     debug!("reason string:{:?}", reason_bytes);
+
     match RpcErrorsErrors::abi_decode(&reason_bytes, true)
-        .wrap_err("unknown OrderGatewayProxy error")
+        .wrap_err("Failed to decode reason_string")
     {
         Ok(decoded_error) => match decoded_error {
             RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
@@ -535,6 +541,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
                     ReasonError::LowerExecutionPrice,
                 );
             }
+            // all other errors are mapped to UnknownError
             _ => {
                 info!("RPC error:{:?}", decoded_error);
                 return (
@@ -544,14 +551,18 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
             }
         },
         Err(err) => {
-            return (
-                format!("Error decoding reason string={:?}", err),
-                ReasonError::UnknownError,
-            );
+            return (format!("Error={:?}", err), ReasonError::DecodingError);
         }
     }
 }
 
+/// Extract the batch execution output bytes, received from the transaction logs
+///
+/// The fn will return a vector with BatchExecuteOutputs that should match the number of orders in an executed batch
+///
+/// and will provide details on the executed order if successfull or what kind of error it has.
+///
+/// On success it will also provide details on the execution like, executed price, block time etc... see BatchExecuteOutput for details
 pub fn extract_execute_batch_outputs(
     batch_execute_receipt: &TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
