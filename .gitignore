@@ -2,5 +2,4 @@
 .env
 /.vscodenode_modules/
 .vscode/
-reya-rust-sdk/src/play.rs
 Cargo.lock
