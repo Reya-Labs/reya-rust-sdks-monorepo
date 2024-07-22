@@ -373,6 +373,9 @@ impl HttpProvider {
             signatures
         );
         let builder = proxy.batchExecute(orders, signatures);
+
+        let _ = builder.clone().gas(20_000_000);
+
         let transaction_result = builder.send().await?;
 
         let receipt = transaction_result.get_receipt().await?;
@@ -470,7 +473,7 @@ impl HttpProvider {
 /// decode the reason string to an Error
 ///
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    debug!("reason string:{:?}", reason_bytes);
+    debug!("Reason string:{:?}", reason_bytes);
 
     match RpcErrorsErrors::abi_decode(&reason_bytes, true)
         .wrap_err("Failed to decode reason_string")
@@ -657,7 +660,7 @@ pub fn extract_execute_batch_outputs(
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
-
+                debug!("failed order bytes struct={:?}", failed_order_bytes);
                 let (reason, reason_error) = decode_reason(failed_order_bytes.reason.clone());
 
                 result.push(BatchExecuteOutput {
