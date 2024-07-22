@@ -373,6 +373,7 @@ impl HttpProvider {
             signatures
         );
         let builder = proxy.batchExecute(orders, signatures);
+        let _ = builder.clone().gas(20_000_000);
         let transaction_result = builder.send().await?;
 
         let receipt = transaction_result.get_receipt().await?;
