@@ -130,6 +130,7 @@ pub enum CommandType {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum OrderType {
     StopLoss = 0,
+    TakeProfit = 1,
 }
 
 /// order struct to execute orders in a batch
