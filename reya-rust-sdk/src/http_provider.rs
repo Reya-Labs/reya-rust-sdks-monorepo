@@ -301,11 +301,6 @@ impl HttpProvider {
             .wallet(EthereumWallet::from(signer))
             .on_http(self.sdk_config.rpc_url.clone());
 
-        let proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
-            provider.clone(),
-        );
-
         // add all order ans signatures to the batch vector
         for i in 0..batch_orders.len() {
             let batch_order: &data_types::BatchOrder = &batch_orders[i];
@@ -372,11 +367,17 @@ impl HttpProvider {
             orders,
             signatures
         );
+
+        let proxy = OrderGatewayProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
+
         let builder = proxy.batchExecute(orders, signatures);
+        let new_gas_limit = (builder.estimate_gas().await.unwrap() * 12u128) / 10u128;
+        let b2 = builder.gas(new_gas_limit);
 
-        let _ = builder.clone().gas(20_000_000);
-
-        let transaction_result = builder.send().await?;
+        let transaction_result = b2.send().await?;
 
         let receipt = transaction_result.get_receipt().await?;
 
