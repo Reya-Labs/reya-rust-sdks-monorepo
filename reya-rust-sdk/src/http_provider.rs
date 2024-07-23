@@ -308,8 +308,10 @@ impl HttpProvider {
             trace!("Executing batch order:{:?}", batch_order);
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
-            if batch_order.order_type == data_types::OrderType::StopLoss {
-                // generate encoded core command for the input bytes of a stop_loss order
+            if batch_order.order_type == data_types::OrderType::StopLoss
+                || batch_order.order_type == data_types::OrderType::TakeProfit
+            {
+                // generate encoded core command for the input bytes of a stop_loss or take profit order
                 // The input byte structure is:
                 // {
                 //     is_long,
@@ -317,7 +319,7 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let trigger_price: U256 = (batch_order.stop_price * PRICE_MULTIPLIER)
+                let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
                     .trunc() // take only the integer part
                     .to_string()
                     .parse()
@@ -474,7 +476,7 @@ impl HttpProvider {
 /// decode the reason string to an Error
 ///
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
-    debug!("reason string:{:?}", reason_bytes);
+    debug!("Reason string:{:?}", reason_bytes);
 
     match RpcErrorsErrors::abi_decode(&reason_bytes, true)
         .wrap_err("Failed to decode reason_string")
@@ -661,7 +663,7 @@ pub fn extract_execute_batch_outputs(
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
-
+                debug!("failed order bytes struct={:?}", failed_order_bytes);
                 let (reason, reason_error) = decode_reason(failed_order_bytes.reason.clone());
 
                 result.push(BatchExecuteOutput {
