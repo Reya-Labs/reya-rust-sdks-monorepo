@@ -308,8 +308,10 @@ impl HttpProvider {
             trace!("Executing batch order:{:?}", batch_order);
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
-            if batch_order.order_type == data_types::OrderType::StopLoss {
-                // generate encoded core command for the input bytes of a stop_loss order
+            if batch_order.order_type == data_types::OrderType::StopLoss
+                || batch_order.order_type == data_types::OrderType::TakeProfit
+            {
+                // generate encoded core command for the input bytes of a stop_loss or take profit order
                 // The input byte structure is:
                 // {
                 //     is_long,
