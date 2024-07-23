@@ -322,7 +322,7 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let trigger_price: U256 = (batch_order.stop_price * PRICE_MULTIPLIER)
+                let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
                     .trunc() // take only the integer part
                     .to_string()
                     .parse()
