@@ -376,7 +376,7 @@ impl HttpProvider {
         );
 
         let builder = proxy.batchExecute(orders, signatures);
-        let new_gas_limit = (builder.estimate_gas().await.unwrap() * 12u128) / 10u128;
+        let new_gas_limit = (builder.estimate_gas().await? * 12u128) / 10u128;
         let b2 = builder.gas(new_gas_limit);
 
         let transaction_result = b2.send().await?;
