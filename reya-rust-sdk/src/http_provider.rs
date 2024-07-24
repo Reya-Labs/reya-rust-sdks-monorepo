@@ -4,7 +4,6 @@ use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::PRICE_MULTIPLIER;
-
 use alloy::{
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
@@ -15,7 +14,7 @@ use alloy::{
     sol_types::SolEvent,
 };
 use alloy_sol_types::{SolInterface, SolValue};
-use eyre;
+use eyre::eyre;
 use eyre::WrapErr;
 use rust_decimal::{prelude::*, Decimal};
 use tracing::*;
@@ -376,20 +375,30 @@ impl HttpProvider {
         );
 
         let builder = proxy.batchExecute(orders, signatures);
-        let new_gas_limit = (builder.estimate_gas().await.unwrap() * 12u128) / 10u128;
-        let b2 = builder.gas(new_gas_limit);
+        let estimated_gas_result = builder.estimate_gas().await;
+        match estimated_gas_result {
+            Ok(estimated_gas) => {
+                let new_gas_limit = (estimated_gas * 12u128) / 10u128;
+                let b2 = builder.gas(new_gas_limit);
 
-        let transaction_result = b2.send().await?;
+                // send the transaction here
+                let transaction_result = b2.send().await?;
 
-        let receipt = transaction_result.get_receipt().await?;
+                let receipt = transaction_result.get_receipt().await?;
 
-        if receipt.inner.is_success() {
-            trace!("BatchExecuted receipt={:?}", receipt);
+                if receipt.inner.is_success() {
+                    trace!("BatchExecuted receipt={:?}", receipt);
+                }
+
+                trace!("End Execute batch");
+
+                return eyre::Ok(receipt);
+            }
+            Err(err) => {
+                error!("Estimatesd gas call failed {:?}", err);
+                return Err(eyre!(format!("Estimated gas call failed {:?}", err)));
+            }
         }
-
-        trace!("End Execute batch");
-
-        eyre::Ok(receipt)
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
