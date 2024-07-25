@@ -8,7 +8,7 @@ use alloy::{
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::TransactionReceipt,
+    rpc, // used for TransactionReceipt
     signers::local::PrivateKeySigner,
     sol,
     sol_types::SolEvent,
@@ -293,7 +293,7 @@ impl HttpProvider {
         &self,
         private_key: &String,
         batch_orders: &Vec<data_types::BatchOrder>,
-    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
+    ) -> eyre::Result<rpc::types::TransactionReceipt> // return the transaction receipt
     {
         trace!("Start Execute batch");
 
@@ -436,7 +436,7 @@ impl HttpProvider {
     pub async fn get_transaction_receipt(
         &self,
         tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<rpc::types::TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
@@ -578,7 +578,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
 ///
 /// On success it will also provide details on the execution like, executed price, block time etc... see BatchExecuteOutput for details
 pub fn extract_execute_batch_outputs(
-    batch_execute_receipt: &TransactionReceipt,
+    batch_execute_receipt: &rpc::types::TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
     debug!("Extracting batch outputs");
 
