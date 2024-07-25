@@ -1,8 +1,5 @@
 #[allow(dead_code)]
-use alloy::{
-    primitives::{address, I256, U256},
-    signers::local::PrivateKeySigner,
-};
+use alloy::primitives::{address, I256, U256};
 use clap::*;
 use core::result::Result::Ok;
 use dotenv::dotenv;
@@ -37,10 +34,8 @@ pub struct JsonBatchOrder {
 
 async fn create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-    let signer: PrivateKeySigner = private_key.parse().unwrap();
-
     let transaction_hash = http_provider
-        .create_account(signer, &account_owner_address)
+        .create_account(private_key, &account_owner_address)
         .await;
 
     info!("Created account, tx hash:{:?}", transaction_hash);
@@ -135,11 +130,9 @@ async fn execute_order(
     order_base: &I256,
     order_price_limit: &U256,
 ) {
-    let signer: PrivateKeySigner = sdk_config.private_key.parse().unwrap();
-
     let transaction_hash = http_provider
         .execute(
-            signer,
+            &sdk_config.private_key,
             account_id,
             market_id,
             exchange_id,
@@ -156,9 +149,9 @@ async fn execute_batch_orders(
     http_provider: &http_provider::HttpProvider,
     batch_orders: Vec<data_types::BatchOrder>,
 ) {
-    let signer: PrivateKeySigner = private_key.parse().unwrap();
-
-    let transaction_receipt = http_provider.execute_batch(signer, &batch_orders).await;
+    let transaction_receipt = http_provider
+        .execute_batch(&private_key, &batch_orders)
+        .await;
     info!(
         "Execute batch orders, tx hash:{:?}",
         transaction_receipt.unwrap().transaction_hash
