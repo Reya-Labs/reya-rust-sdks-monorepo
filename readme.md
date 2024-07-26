@@ -30,4 +30,4 @@ run sdk test as: cargo test  -p reya-rust-sdk
 
 ## Release history:
 - V0.2.0: Add support for TakeProfit
-- V0.2.1: Add more markets, OP, ARB, AVX
+- V0.2.0: Add more markets, OP, ARB, AVX
