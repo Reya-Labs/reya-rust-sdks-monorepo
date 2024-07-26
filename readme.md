@@ -27,3 +27,7 @@ https://usecannon.com/packages/reya-omnibus/1.0.0/1729-main/interact/reya-omnibu
 
 ## tests
 run sdk test as: cargo test  -p reya-rust-sdk
+
+## Release history:
+- V0.2.0: Add support for TakeProfit
+- V0.2.1: Add more markets, OP, ARB, AVX
