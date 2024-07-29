@@ -4,12 +4,11 @@ use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::PRICE_MULTIPLIER;
-
 use alloy::{
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::TransactionReceipt,
+    rpc, // used for TransactionReceipt
     signers::local::PrivateKeySigner,
     sol,
     sol_types::SolEvent,
@@ -120,22 +119,25 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
-    /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
+    /// let transaction_hash = http_provider.create_account(private_key, &account_owner_address).await;
     ///
     /// info!("Created account, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn create_account(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         account_owner_address: &Address,
     ) -> eyre::Result<B256> // return the transaction hash
     {
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
@@ -181,7 +183,7 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
     /// let market_id = 1u128;
     ///
@@ -191,13 +193,13 @@ impl HttpProvider {
     ///
     /// let order_price_limit: U256 = "4000000000000000000000".parse().unwrap();
     ///
-    /// let transaction_hash = http_provider.execute(signer, account_id, market_id, exchange_id, order_base, order_price_limit).await;
+    /// let transaction_hash = http_provider.execute(private_key, account_id, market_id, exchange_id, order_base, order_price_limit).await;
     ///
     /// info!("Execute match order, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn execute(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
@@ -214,10 +216,13 @@ impl HttpProvider {
             order_price_limit
         );
 
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
 
         let proxy = OrderGatewayProxy::new(
@@ -271,30 +276,33 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
     /// let mut batch_orders:Vec<data_types::BatchOrder> = make_batch();
     ///
-    /// let transaction_hash = http_provider.execute_batch(signer, batch_orders).await;
+    /// let transaction_hash = http_provider.execute_batch(private_key, batch_orders).await;
     ///
     /// '''
     ///
     pub async fn execute_batch(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         batch_orders: &Vec<data_types::BatchOrder>,
     ) -> eyre::Result<B256> // return the transaction hash
     {
         trace!("Start Execute batch");
 
-        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
-        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
 
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
+
+        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
 
         // add all order ans signatures to the batch vector
         for i in 0..batch_orders.len() {
@@ -417,7 +425,7 @@ impl HttpProvider {
     pub async fn get_transaction_receipt(
         &self,
         tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<rpc::types::TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
@@ -559,7 +567,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
 ///
 /// On success it will also provide details on the execution like, executed price, block time etc... see BatchExecuteOutput for details
 pub fn extract_execute_batch_outputs(
-    batch_execute_receipt: &TransactionReceipt,
+    batch_execute_receipt: &rpc::types::TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
     debug!("Extracting batch outputs");
 
