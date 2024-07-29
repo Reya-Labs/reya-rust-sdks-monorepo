@@ -149,13 +149,10 @@ async fn execute_batch_orders(
     http_provider: &http_provider::HttpProvider,
     batch_orders: Vec<data_types::BatchOrder>,
 ) {
-    let transaction_receipt = http_provider
+    let transaction_hash = http_provider
         .execute_batch(&private_key, &batch_orders)
         .await;
-    info!(
-        "Execute batch orders, tx hash:{:?}",
-        transaction_receipt.unwrap().transaction_hash
-    );
+    info!("Execute batch orders, tx hash:{:?}", transaction_hash);
 }
 
 #[allow(dead_code)]
