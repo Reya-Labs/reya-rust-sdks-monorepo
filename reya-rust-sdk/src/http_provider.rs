@@ -243,13 +243,8 @@ impl HttpProvider {
 
         let builder = proxy.execute(account_id, vec![command]);
         let transaction_result = builder.send().await?;
-        let receipt = transaction_result.get_receipt().await?;
 
-        if receipt.inner.is_success() {
-            debug!("Execute receipt:{:?}", receipt);
-        }
-
-        eyre::Ok(receipt.transaction_hash)
+        eyre::Ok(transaction_result.tx_hash().clone())
     }
 
     /// Executes a batch of orders and will return a transaction hash when the batch is executed.
@@ -288,7 +283,7 @@ impl HttpProvider {
         &self,
         signer: PrivateKeySigner,
         batch_orders: &Vec<data_types::BatchOrder>,
-    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
+    ) -> eyre::Result<B256> // return the transaction hash
     {
         trace!("Start Execute batch");
 
@@ -381,15 +376,9 @@ impl HttpProvider {
 
         let transaction_result = b2.send().await?;
 
-        let receipt = transaction_result.get_receipt().await?;
-
-        if receipt.inner.is_success() {
-            trace!("BatchExecuted receipt={:?}", receipt);
-        }
-
         trace!("End Execute batch");
 
-        eyre::Ok(receipt)
+        eyre::Ok(transaction_result.tx_hash().clone())
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
