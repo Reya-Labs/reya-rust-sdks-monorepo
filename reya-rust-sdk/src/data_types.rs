@@ -186,3 +186,14 @@ pub struct MarginInfo {
     /// Information required to compute health of position in the context of adl liquidations
     pub liquidation_margin_requirement: U256,
 }
+
+
+/// auto exchange inputs
+#[derive(Debug)]
+pub struct TriggerAutoExchangeParams {
+    pub account_id: u128,
+    pub liquidator_account_id: u128,
+    pub requested_quote_amount: U256,
+    pub collateral: Address,
+    pub in_collateral:Address,
+}

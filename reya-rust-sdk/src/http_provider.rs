@@ -391,6 +391,57 @@ impl HttpProvider {
         eyre::Ok(transaction_result.tx_hash().clone())
     }
 
+    pub async fn trigger_auto_excahnge(
+        &self,
+        signer: PrivateKeySigner,
+        params: data_types::TriggerAutoExchangeParams,
+    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
+    {
+        trace!("Start Trigger Auto-exchange");
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(EthereumWallet::from(signer))
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        trace!(
+            "Execution auto-exchange of account={:?}, collateral={:?}",
+            params.account_id,
+            params.collateral
+        );
+
+        let proxy = CoreProxy::new(
+            self.sdk_config.order_gateway_contract_address.parse()?,
+            provider.clone(),
+        );
+
+        let inputs : CoreProxy::TriggerAutoExchangeInput = CoreProxy::TriggerAutoExchangeInput {
+            accountId: params.account_id,
+            liquidatorAccountId: params.liquidator_account_id,
+            requestedQuoteAmount: params.requested_quote_amount,
+            collateral: params.collateral,
+            inCollateral: params.in_collateral,
+        };
+
+        let builder = proxy.triggerAutoExchange(inputs);
+        // todo: change accordingly
+        let new_gas_limit = (builder.estimate_gas().await.unwrap() * 12u128) / 10u128;
+        let b2 = builder.gas(new_gas_limit);
+
+        let transaction_result = b2.send().await?;
+
+        let receipt = transaction_result.get_receipt().await?;
+
+        if receipt.inner.is_success() {
+            trace!("Trigger Auto-exchange receipt={:?}", receipt);
+        }
+
+        trace!("End Trigger Auto-exchange");
+
+        eyre::Ok(receipt)
+    }
+
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
     ///
     /// Needs the following parameters:
