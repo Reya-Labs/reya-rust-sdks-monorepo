@@ -9,6 +9,7 @@ use std::env;
 use url::Url;
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
+pub const WAD_MULTIPLIER: U256 = U256::from_limbs([0, 0, 0, 1_000_000_000_000_000_000]);
 ///
 /// configuration struct for the sdk
 ///
@@ -187,7 +188,6 @@ pub struct MarginInfo {
     pub liquidation_margin_requirement: U256,
 }
 
-
 /// auto exchange inputs
 #[derive(Debug)]
 pub struct TriggerAutoExchangeParams {
@@ -195,5 +195,5 @@ pub struct TriggerAutoExchangeParams {
     pub liquidator_account_id: u128,
     pub requested_quote_amount: U256,
     pub collateral: Address,
-    pub in_collateral:Address,
+    pub in_collateral: Address,
 }

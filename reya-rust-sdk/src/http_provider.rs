@@ -416,7 +416,7 @@ impl HttpProvider {
             provider.clone(),
         );
 
-        let inputs : CoreProxy::TriggerAutoExchangeInput = CoreProxy::TriggerAutoExchangeInput {
+        let inputs: CoreProxy::TriggerAutoExchangeInput = CoreProxy::TriggerAutoExchangeInput {
             accountId: params.account_id,
             liquidatorAccountId: params.liquidator_account_id,
             requestedQuoteAmount: params.requested_quote_amount,
