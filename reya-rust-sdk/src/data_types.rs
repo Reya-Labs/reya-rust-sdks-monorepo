@@ -9,7 +9,7 @@ use std::env;
 use url::Url;
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
-pub const WAD_MULTIPLIER: U256 = U256::from_limbs([0, 0, 0, 1_000_000_000_000_000_000]);
+pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
 ///
 /// configuration struct for the sdk
 ///
