@@ -391,6 +391,51 @@ impl HttpProvider {
         eyre::Ok(transaction_result.tx_hash().clone())
     }
 
+    pub async fn trigger_auto_exchange(
+        &self,
+        private_key: &String,
+        params: data_types::TriggerAutoExchangeParams,
+    ) -> eyre::Result<B256> // return the transaction receipt
+    {
+        trace!("Start Trigger Auto-exchange");
+
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        trace!(
+            "Execution auto-exchange of account={:?}, collateral={:?}",
+            params.account_id,
+            params.collateral
+        );
+
+        let proxy = CoreProxy::new(
+            self.sdk_config.core_proxy_address.parse()?,
+            provider.clone(),
+        );
+
+        let inputs: CoreProxy::TriggerAutoExchangeInput = CoreProxy::TriggerAutoExchangeInput {
+            accountId: params.account_id,
+            liquidatorAccountId: params.liquidator_account_id,
+            requestedQuoteAmount: params.requested_quote_amount,
+            collateral: params.collateral,
+            inCollateral: params.in_collateral,
+        };
+
+        let builder = proxy.triggerAutoExchange(inputs);
+
+        let transaction_result = builder.send().await?;
+
+        trace!("End Trigger Auto-exchange");
+
+        eyre::Ok(transaction_result.tx_hash().clone())
+    }
+
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
     ///
     /// Needs the following parameters:
