@@ -315,6 +315,7 @@ impl HttpProvider {
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
             if batch_order.order_type == data_types::OrderType::StopLoss
                 || batch_order.order_type == data_types::OrderType::TakeProfit
+                || batch_order.order_type == data_types::OrderType::Limit
             {
                 // generate encoded core command for the input bytes of a stop_loss or take profit order
                 // The input byte structure is:
@@ -330,10 +331,15 @@ impl HttpProvider {
                     .parse()
                     .unwrap();
 
-                let mut price_limit: U256 = U256::ZERO;
-                if batch_order.is_long {
-                    price_limit = U256::MAX;
-                }
+                let price_limit: U256 = (batch_order.order_qty * PRICE_MULTIPLIER)
+                    .trunc()
+                    .to_string()
+                    .parse()
+                    .unwrap();
+                //let mut price_limit: U256 = U256::ZERO;
+                //if batch_order.is_long {
+                //    price_limit = U256::MAX;
+                //}
 
                 let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
                     is_long: batch_order.is_long,
@@ -346,11 +352,11 @@ impl HttpProvider {
                 trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                batch_order.price_limit, //
+                price_limit, //
                 encoded_input_bytes );
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
 
             let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,

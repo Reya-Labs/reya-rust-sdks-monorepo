@@ -142,6 +142,7 @@ pub enum CommandType {
 pub enum OrderType {
     StopLoss = 0,
     TakeProfit = 1,
+    Limit = 2,
 }
 
 /// order struct to execute orders in a batch
@@ -151,6 +152,7 @@ pub struct BatchOrder {
     pub account_id: u128,
     pub market_id: u128,
     pub exchange_id: u128,
+    pub order_qty: Decimal,
     pub order_type: OrderType,
     /// side(+/- = buy/sell) + volume i256
     pub order_base: I256,
