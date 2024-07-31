@@ -97,19 +97,15 @@ async fn get_execute_batch_receipt_logs(
                     None => {
                         // no errors
                         info!(
-                            "Order executed succesfully, block time:{:?}",
-                            batch_execute_output
+                            "Order executed succesfully {:?}, {:?}",
+                            batch_execute_hash, batch_execute_output,
                         );
                     }
                     Some(reason_error_code) => {
                         //
                         match reason_error_code {
                             _ => {
-                                error!(
-                                    "ErrorCode={:?}, reason={:?}",
-                                    reason_error_code,
-                                    Some(batch_execute_output.reason_str)
-                                );
+                                error!("ErrorCode={:?}", reason_error_code);
                             }
                         }
                     }
@@ -159,7 +155,7 @@ async fn execute_batch_orders(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // default warn level logging
-    simple_logger::init_with_level(log::Level::Debug).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
 
     dotenv().ok();
     // sdk url: https://rpc.reya.network
@@ -234,7 +230,7 @@ async fn main() -> eyre::Result<()> {
             http_provider::HttpProvider::new(&sdk_config);
 
         let batch_execute_hash = String::from(packages[0]); // batch_execute_hash
-        println!("get log{} {}", sdk_config.rpc_url, batch_execute_hash);
+        debug!("Get log{} {}", sdk_config.rpc_url, batch_execute_hash);
         get_execute_batch_receipt_logs(batch_execute_hash, &http_provider).await;
     } else
     // handle batche execute request

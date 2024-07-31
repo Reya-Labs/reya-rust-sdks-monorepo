@@ -36,10 +36,12 @@ pub enum ReasonError {
 
 #[derive(Debug)]
 pub struct BatchExecuteOutput {
+    pub market_id: u128,
     pub order_index: u32,
     pub execution_price: Decimal,
-    pub order_nonce: aliases::TxNonce,
+    pub order_nonce: u128,
     pub block_timestamp: aliases::BlockTimestamp,
+    pub order_type: u8,
     // optional error details will only be set if an error occured
     pub reason_str: Option<String>,
     pub reason_error: Option<ReasonError>,
@@ -434,7 +436,7 @@ impl HttpProvider {
 
         match transaction_receipt_result {
             Ok(transaction_receipt) => {
-                info!(
+                debug!(
                     "Transaction receipt:{:?}",
                     Some(transaction_receipt.clone())
                 );
@@ -592,12 +594,20 @@ pub fn extract_execute_batch_outputs(
                     .unwrap()
                     / data_types::PRICE_MULTIPLIER;
 
-                info!(
+                debug!(
                     "Successful order execution, execution price:{:?}, nonce={:?}",
                     execution_price, successful_order.order.nonce
                 );
 
+                let nonce: u128 = successful_order
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
+
                 result.push(BatchExecuteOutput {
+                    market_id: successful_order.order.marketId,
                     order_index: successful_order
                         .orderIndex
                         .to_string()
@@ -605,19 +615,13 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32),
 
                     execution_price: execution_price,
-
-                    order_nonce: successful_order
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
                     block_timestamp: successful_order
                         .blockTimestamp
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
+                    order_type: successful_order.order.orderType,
                     // no errors here
                     reason_str: None,
                     reason_error: None,
@@ -628,8 +632,15 @@ pub fn extract_execute_batch_outputs(
                 //
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
+                let nonce: u128 = failed_order_message
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
 
                 result.push(BatchExecuteOutput {
+                    market_id: failed_order_message.order.marketId,
                     order_index: failed_order_message
                         .orderIndex
                         .to_string()
@@ -637,20 +648,13 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32),
 
                     execution_price: Decimal::from(0),
-
-                    order_nonce: failed_order_message
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
                     block_timestamp: failed_order_message
                         .blockTimestamp
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
-
+                    order_type: failed_order_message.order.orderType,
                     reason_str: Some(String::from("Failed")),
                     reason_error: Some(ReasonError::UnknownError),
                 });
@@ -660,10 +664,20 @@ pub fn extract_execute_batch_outputs(
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
+
                 debug!("failed order bytes struct={:?}", failed_order_bytes);
+
+                let nonce: u128 = failed_order_bytes
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
+
                 let (reason, reason_error) = decode_reason(failed_order_bytes.reason.clone());
 
                 result.push(BatchExecuteOutput {
+                    market_id: failed_order_bytes.order.marketId,
                     order_index: failed_order_bytes
                         .orderIndex
                         .to_string()
@@ -671,14 +685,8 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32), //
 
                     execution_price: Decimal::from(0),
-
-                    order_nonce: failed_order_bytes
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
+                    order_type: failed_order_bytes.order.orderType,
                     block_timestamp: failed_order_bytes
                         .blockTimestamp
                         .to_string()
