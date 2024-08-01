@@ -68,26 +68,9 @@ pub fn load_enviroment_config() -> SdkConfig {
 }
 
 #[allow(dead_code)]
+
 // exchanges
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
-
-// markets
-// todo: p1 add sol market
-pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
-pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
-pub const SOL_MARKET_ID: u32 = 3u32; //3=reya sol market
-pub const ARB_MARKET_ID: u32 = 4u32; //4=reya ARB market
-pub const OP_MARKET_ID: u32 = 5u32; //5=reya OP market
-pub const AVAX_MARKET_ID: u32 = 6u32; //6=reya AVAX market
-
-pub const MARKETS: [u32; 6] = [
-    SOL_MARKET_ID,
-    ETH_MARKET_ID,
-    BTC_MARKET_ID,
-    ARB_MARKET_ID,
-    OP_MARKET_ID,
-    AVAX_MARKET_ID,
-];
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
@@ -152,10 +135,9 @@ pub struct BatchOrder {
     pub account_id: u128,
     pub market_id: u128,
     pub exchange_id: u128,
-    pub order_qty: Decimal,
     pub order_type: OrderType,
-    /// side(+/- = buy/sell) + volume i256
-    pub order_base: I256,
+    /// side(+/- = buy/sell) + volume/quantity
+    pub order_base: Decimal,
     /// stop price only set when order type = stop_loss
     pub trigger_price: Decimal,
     pub price_limit: Decimal,

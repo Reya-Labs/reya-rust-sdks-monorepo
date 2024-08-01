@@ -17,6 +17,7 @@ use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
 use eyre::WrapErr;
 use rust_decimal::{prelude::*, Decimal};
+use rust_decimal_macros::dec;
 use tracing::*;
 
 #[derive(Debug)]
@@ -331,15 +332,23 @@ impl HttpProvider {
                     .parse()
                     .unwrap();
 
-                let price_limit: U256 = (batch_order.order_qty * PRICE_MULTIPLIER)
+                let order_quantity: I256 = (batch_order.order_base
+                    * PRICE_MULTIPLIER
+                    * if batch_order.is_long {
+                        dec!(+1)
+                    } else {
+                        dec!(-1)
+                    })
+                .trunc()
+                .to_string()
+                .parse()
+                .unwrap();
+
+                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
                     .trunc()
                     .to_string()
                     .parse()
                     .unwrap();
-                //let mut price_limit: U256 = U256::ZERO;
-                //if batch_order.is_long {
-                //    price_limit = U256::MAX;
-                //}
 
                 let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
                     is_long: batch_order.is_long,
@@ -353,7 +362,7 @@ impl HttpProvider {
                 batch_order.is_long, //
                 trigger_price, //
                 price_limit, //
-                encoded_input_bytes );
+                encoded_input_bytes);
             }
 
             let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
