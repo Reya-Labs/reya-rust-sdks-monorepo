@@ -67,6 +67,12 @@ sol!(
         uint256 trigger_price;  // stop_price!
         uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
     }
+
+    struct ExecuteInputBytes
+    {
+        int256 order_base;  // price!
+        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+    }
 );
 /**
  * HTTP Provider
@@ -314,9 +320,14 @@ impl HttpProvider {
             trace!("Executing batch order:{:?}", batch_order);
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
+            let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
+                .trunc() // take only the integer part
+                .to_string()
+                .parse()
+                .unwrap();
+
             if batch_order.order_type == data_types::OrderType::StopLoss
                 || batch_order.order_type == data_types::OrderType::TakeProfit
-                || batch_order.order_type == data_types::OrderType::Limit
             {
                 // generate encoded core command for the input bytes of a stop_loss or take profit order
                 // The input byte structure is:
@@ -326,16 +337,30 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
-                    .trunc() // take only the integer part
+                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
+                    .trunc()
                     .to_string()
                     .parse()
                     .unwrap();
 
-                let order_quantity: I256 = (batch_order.order_base
+                let batch_execute_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
+                    is_long: batch_order.is_long,
+                    trigger_price: trigger_price,
+                    price_limit: price_limit,
+                };
+
+                encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
+
+                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                batch_order.is_long, //
+                trigger_price, //
+                price_limit, //
+                encoded_input_bytes);
+            } else if batch_order.order_type == data_types::OrderType::Limit {
+                let order_base: I256 = (batch_order.price_limit
                     * PRICE_MULTIPLIER
                     * if batch_order.is_long {
-                        dec!(+1)
+                        dec!(1)
                     } else {
                         dec!(-1)
                     })
@@ -344,24 +369,16 @@ impl HttpProvider {
                 .parse()
                 .unwrap();
 
-                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
-                    .trunc()
-                    .to_string()
-                    .parse()
-                    .unwrap();
-
-                let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
-                    is_long: batch_order.is_long,
-                    trigger_price: trigger_price,
-                    price_limit: price_limit,
+                let execute_input_bytes: ExecuteInputBytes = ExecuteInputBytes {
+                    order_base: order_base,
+                    price_limit: trigger_price,
                 };
+                encoded_input_bytes = execute_input_bytes.abi_encode_sequence();
 
-                encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
-
-                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                trace!("Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                price_limit, //
+                order_base, //
                 encoded_input_bytes);
             }
 
