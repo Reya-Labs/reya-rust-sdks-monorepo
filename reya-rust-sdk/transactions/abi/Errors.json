@@ -240,17 +240,6 @@
   },
   {
     "type": "error",
-    "name": "FeatureUnavailable",
-    "inputs": [
-      {
-        "name": "which",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "GlobalCollateralNotFound",
     "inputs": [
       {
