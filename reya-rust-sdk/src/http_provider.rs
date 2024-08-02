@@ -5,6 +5,7 @@ use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::PRICE_MULTIPLIER;
 use alloy::{
+    contract::Error,
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
@@ -12,10 +13,12 @@ use alloy::{
     signers::local::PrivateKeySigner,
     sol,
     sol_types::SolEvent,
+    transports::RpcError,
 };
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
-use eyre::WrapErr;
+use eyre::{Report, WrapErr};
+use hex::FromHex;
 use rust_decimal::{prelude::*, Decimal};
 use tracing::*;
 
@@ -32,6 +35,25 @@ pub enum ReasonError {
     LowerExecutionPrice,
     UnknownError,
     DecodingError,
+}
+
+#[derive(Debug)]
+pub enum AEReasonError {
+    SameQuoteAndcollateral,
+    ZeroAddress,
+    SameAccountId,
+    AccountNotFound,
+    AccountPermissionDenied,
+    CollateralPoolCollision,
+    CollateralIsNotQuote,
+    CollateralPoolNotFound,
+    WithinBubbleCoverageNotExhausted,
+    AccountNotEligibleForAutoExchange,
+    CollateralCapExceeded,
+    AccountBelowIM,
+    NegativeAccountRealBalance,
+    DecodingError,
+    UnknownError,
 }
 
 #[derive(Debug)]
@@ -429,11 +451,16 @@ impl HttpProvider {
 
         let builder = proxy.triggerAutoExchange(inputs);
 
-        let transaction_result = builder.send().await?;
-
-        trace!("End Trigger Auto-exchange");
-
-        eyre::Ok(transaction_result.tx_hash().clone())
+        match builder.send().await {
+            Ok(transaction_result) => {
+                trace!("End Trigger Auto-exchange");
+                return eyre::Ok(transaction_result.tx_hash().clone());
+            }
+            Err(e) => {
+                handle_auto_exchange_error(e);
+                return Err(Report::msg(format!("[DEcode] Transaction reverted")));
+            }
+        }
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -602,6 +629,150 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
         },
         Err(err) => {
             return (format!("Error={:?}", err), ReasonError::DecodingError);
+        }
+    }
+}
+
+fn decode_auto_exchange_error(reason_bytes: Bytes) -> (String, AEReasonError) {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
+        .wrap_err("Failed to decode reason_string")
+    {
+        Ok(decoded_error) => match decoded_error {
+            RpcErrorsErrors::SameQuoteAndcollateral(same_quote_collateral) => {
+                error!("reason error={:?}", same_quote_collateral);
+                return (
+                    String::from("SameQuoteAndcollateral"),
+                    AEReasonError::SameQuoteAndcollateral,
+                );
+            }
+            RpcErrorsErrors::ZeroAddress(zero_address) => {
+                error!("reason error={:?}", zero_address);
+                return (String::from("ZeroAddress"), AEReasonError::ZeroAddress);
+            }
+            RpcErrorsErrors::SameAccountId(zero_address) => {
+                error!("reason error={:?}", zero_address);
+                return (String::from("SameAccountId"), AEReasonError::SameAccountId);
+            }
+            RpcErrorsErrors::AccountNotFound(account_not_found) => {
+                error!("reason error={:?}", account_not_found);
+                return (
+                    String::from("AccountNotFound"),
+                    AEReasonError::AccountNotFound,
+                );
+            }
+            RpcErrorsErrors::AccountPermissionDenied(account_permission_denied) => {
+                error!("reason error={:?}", account_permission_denied);
+                return (
+                    String::from("AccountPermissionDenied"),
+                    AEReasonError::AccountPermissionDenied,
+                );
+            }
+            RpcErrorsErrors::NegativeAccountRealBalance(negative_account_real_balance) => {
+                error!("reason error={:?}", negative_account_real_balance);
+                return (
+                    String::from("NegativeAccountRealBalance"),
+                    AEReasonError::NegativeAccountRealBalance,
+                );
+            }
+            RpcErrorsErrors::CollateralPoolCollision(collateral_pool_collision) => {
+                error!("reason error={:?}", collateral_pool_collision);
+                return (
+                    String::from("CollateralPoolCollision"),
+                    AEReasonError::CollateralPoolCollision,
+                );
+            }
+            RpcErrorsErrors::AccountBelowIM(account_below_im) => {
+                error!("reason error={:?}", account_below_im);
+                return (
+                    String::from("AccountBelowIM"),
+                    AEReasonError::AccountBelowIM,
+                );
+            }
+            RpcErrorsErrors::CollateralIsNotQuote(collateral_is_not_quote) => {
+                error!("reason error={:?}", collateral_is_not_quote);
+                return (
+                    String::from("CollateralIsNotQuote"),
+                    AEReasonError::CollateralIsNotQuote,
+                );
+            }
+            RpcErrorsErrors::CollateralPoolNotFound(collateral_pool_not_found) => {
+                error!("reason error={:?}", collateral_pool_not_found);
+                return (
+                    String::from("CollateralPoolNotFound"),
+                    AEReasonError::CollateralPoolNotFound,
+                );
+            }
+            RpcErrorsErrors::WithinBubbleCoverageNotExhausted(within_bubble) => {
+                error!("reason error={:?}", within_bubble);
+                return (
+                    String::from("WithinBubbleCoverageNotExhausted"),
+                    AEReasonError::WithinBubbleCoverageNotExhausted,
+                );
+            }
+            RpcErrorsErrors::AccountNotEligibleForAutoExchange(account_not_eligible) => {
+                error!("reason error={:?}", account_not_eligible);
+                return (
+                    String::from("AccountNotEligibleForAutoExchange"),
+                    AEReasonError::AccountNotEligibleForAutoExchange,
+                );
+            }
+            RpcErrorsErrors::CollateralCapExceeded(collateral_cap_exceeded) => {
+                error!("reason error={:?}", collateral_cap_exceeded);
+                return (
+                    String::from("CollateralCapExceeded"),
+                    AEReasonError::CollateralCapExceeded,
+                );
+            }
+            // all other errors are mapped to UnknownError
+            _ => {
+                info!("RPC error:{:?}", decoded_error);
+                return (
+                    format!("RPC error={:?}", decoded_error),
+                    AEReasonError::UnknownError,
+                );
+            }
+        },
+        Err(err) => {
+            return (format!("Error={:?}", err), AEReasonError::DecodingError);
+        }
+    }
+}
+
+fn handle_auto_exchange_error(e: Error) {
+    match e {
+        Error::AbiError(revert_reason) => {
+            info!("[Error decoding] ABI error: {:?}", revert_reason);
+        }
+        Error::TransportError(error) => {
+            let RpcError::ErrorResp(e) = error else {
+                info!("[Error decoding] Failed to match ErrorResp {:?}", error);
+                return;
+            };
+            match e.data {
+                Some(payload) => {
+                    let stt = payload.get().to_string();
+                    let trimmed_str = stt.trim_matches('"');
+                    let data_str = trimmed_str.trim_start_matches("0x");
+                    // Convert the hex string to bytes
+                    match Vec::from_hex(data_str) {
+                        Ok(bytes) => {
+                            let data = Bytes::from(bytes);
+                            let (reason, _) = decode_auto_exchange_error(data);
+                            info!("[Error decoding] Decoded error {:?}", reason);
+                        }
+                        Err(e) => {
+                            info!(
+                                "[Error decoding] Failed to get error bytes with error {:?}",
+                                e
+                            )
+                        }
+                    }
+                }
+                None => info!("[Error decoding] Failed to get error response"),
+            }
+        }
+        _ => {
+            info!("[DEcode] Transaction failed: {:?}", e);
         }
     }
 }
