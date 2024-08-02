@@ -413,6 +413,10 @@ impl HttpProvider {
         eyre::Ok(transaction_result.tx_hash().clone())
     }
 
+    /// Executes an auto exchange on the core proxy contract and returns the tx hash if succesful.
+    ///
+    /// In case it fails, it will attempt to decide the contract error. It will return the
+    /// decoded message or an empty error if unable to decode.
     pub async fn trigger_auto_exchange(
         &self,
         private_key: &String,
@@ -640,6 +644,9 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     }
 }
 
+///
+/// decode the auto-exchange specific reason string to an Error
+///
 fn decode_auto_exchange_error(reason_bytes: Bytes) -> (String, AEReasonError) {
     match RpcErrorsErrors::abi_decode(&reason_bytes, true)
         .wrap_err("Failed to decode reason_string")
@@ -745,6 +752,10 @@ fn decode_auto_exchange_error(reason_bytes: Bytes) -> (String, AEReasonError) {
     }
 }
 
+///
+/// parses a contract error and attempts to decode it into a known error.
+/// does not return anything if decoding fails.
+///
 fn handle_rpc_error(e: Error) -> Option<String> {
     match e {
         Error::AbiError(revert_reason) => {
