@@ -458,7 +458,7 @@ impl HttpProvider {
             }
             Err(e) => {
                 handle_auto_exchange_error(e);
-                return Err(Report::msg(format!("[DEcode] Transaction reverted")));
+                return Err(Report::msg(format!("Auto-exchange transaction reverted")));
             }
         }
     }
