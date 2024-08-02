@@ -456,10 +456,17 @@ impl HttpProvider {
                 trace!("End Trigger Auto-exchange");
                 return eyre::Ok(transaction_result.tx_hash().clone());
             }
-            Err(e) => {
-                handle_auto_exchange_error(e);
-                return Err(Report::msg(format!("Auto-exchange transaction reverted")));
-            }
+            Err(e) => match handle_rpc_error(e) {
+                Some(error_string) => {
+                    return Err(Report::msg(format!(
+                        "Auto-exchange transaction reverted {:?}",
+                        error_string
+                    )));
+                }
+                None => {
+                    return Err(Report::msg(format!("Auto-exchange transaction reverted")));
+                }
+            },
         }
     }
 
@@ -738,15 +745,15 @@ fn decode_auto_exchange_error(reason_bytes: Bytes) -> (String, AEReasonError) {
     }
 }
 
-fn handle_auto_exchange_error(e: Error) {
+fn handle_rpc_error(e: Error) -> Option<String> {
     match e {
         Error::AbiError(revert_reason) => {
-            info!("[Error decoding] ABI error: {:?}", revert_reason);
+            error!("[Error decoding] ABI error: {:?}", revert_reason);
         }
         Error::TransportError(error) => {
             let RpcError::ErrorResp(e) = error else {
-                info!("[Error decoding] Failed to match ErrorResp {:?}", error);
-                return;
+                error!("[Error decoding] Failed to match ErrorResp {:?}", error);
+                return None;
             };
             match e.data {
                 Some(payload) => {
@@ -759,22 +766,24 @@ fn handle_auto_exchange_error(e: Error) {
                             let data = Bytes::from(bytes);
                             let (reason, _) = decode_auto_exchange_error(data);
                             info!("[Error decoding] Decoded error {:?}", reason);
+                            return Some(reason);
                         }
                         Err(e) => {
-                            info!(
+                            error!(
                                 "[Error decoding] Failed to get error bytes with error {:?}",
                                 e
                             )
                         }
                     }
                 }
-                None => info!("[Error decoding] Failed to get error response"),
+                None => error!("[Error decoding] Failed to get error response"),
             }
         }
         _ => {
-            info!("[DEcode] Transaction failed: {:?}", e);
+            error!("[Error decoding] Transaction failed: {:?}", e);
         }
     }
+    return None;
 }
 
 /// Extract the batch execution output bytes, received from the transaction logs
