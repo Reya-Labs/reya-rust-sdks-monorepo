@@ -357,7 +357,7 @@ impl HttpProvider {
                 price_limit, //
                 encoded_input_bytes);
             } else if batch_order.order_type == data_types::OrderType::Limit {
-                let order_base: I256 = (batch_order.price_limit
+                let order_base: I256 = (batch_order.order_base
                     * PRICE_MULTIPLIER
                     * if batch_order.is_long {
                         dec!(1)
