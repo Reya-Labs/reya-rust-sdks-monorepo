@@ -155,7 +155,7 @@ async fn execute_batch_orders(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // default warn level logging
-    simple_logger::init_with_level(log::Level::Info).unwrap();
+    simple_logger::init_with_level(log::Level::Debug).unwrap();
 
     dotenv().ok();
     // sdk url: https://rpc.reya.network

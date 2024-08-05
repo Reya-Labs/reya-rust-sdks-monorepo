@@ -351,7 +351,7 @@ impl HttpProvider {
 
                 encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
 
-                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                trace!("SL/TP Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
                 price_limit, //
@@ -375,7 +375,7 @@ impl HttpProvider {
                 };
                 encoded_input_bytes = execute_input_bytes.abi_encode_sequence();
 
-                trace!("Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
+                trace!("LO Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
                 order_base, //
