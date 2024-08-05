@@ -337,16 +337,10 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let price_limit: U256 = (batch_order.price_limit * PRICE_MULTIPLIER)
-                    .trunc()
-                    .to_string()
-                    .parse()
-                    .unwrap();
-
                 let batch_execute_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
                     is_long: batch_order.is_long,
                     trigger_price: trigger_price,
-                    price_limit: price_limit,
+                    price_limit: batch_order.price_limit,
                 };
 
                 encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
@@ -354,7 +348,7 @@ impl HttpProvider {
                 trace!("SL/TP Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                price_limit, //
+                batch_order.price_limit, //
                 encoded_input_bytes);
             } else if batch_order.order_type == data_types::OrderType::Limit {
                 let order_base: I256 = (
