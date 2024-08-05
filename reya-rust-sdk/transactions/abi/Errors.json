@@ -1,6 +1,54 @@
 [
   {
     "type": "error",
+    "name": "HigherExecutionPrice",
+    "inputs": [
+      {
+        "name": "executionPrice",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      },
+      {
+        "name": "priceLimit",
+        "type": "uint256",
+        "internalType": "UD60x18"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "IncorrectOrderDirection",
+    "inputs": [
+      {
+        "name": "baseDelta",
+        "type": "int256",
+        "internalType": "SD59x18"
+      },
+      {
+        "name": "isLongOrder",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AccountPermissionDenied",
+    "inputs": [
+      {
+        "name": "accountId",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AccountBelowIM",
     "inputs": [
       {
@@ -1773,82 +1821,7 @@
   {
     "type": "error",
     "name": "InvalidSignature",
-    "inputs": [
-      {
-        "name": "order",
-        "type": "tuple",
-        "internalType": "struct ConditionalOrderDetails",
-        "components": [
-          {
-            "name": "accountId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "marketId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "exchangeId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "counterpartyAccountIds",
-            "type": "uint128[]",
-            "internalType": "uint128[]"
-          },
-          {
-            "name": "orderType",
-            "type": "uint8",
-            "internalType": "enum OrderType"
-          },
-          {
-            "name": "inputs",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "signer",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "nonce",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "signature",
-        "type": "tuple",
-        "internalType": "struct EIP712Signature",
-        "components": [
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ]
+    "inputs": []
   },
   {
     "type": "error",
@@ -1874,6 +1847,11 @@
         "name": "outputsLength",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "ordersLength",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },
@@ -1882,78 +1860,14 @@
     "name": "NonceAlreadyUsed",
     "inputs": [
       {
-        "name": "order",
-        "type": "tuple",
-        "internalType": "struct ConditionalOrderDetails",
-        "components": [
-          {
-            "name": "accountId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "marketId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "exchangeId",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "counterpartyAccountIds",
-            "type": "uint128[]",
-            "internalType": "uint128[]"
-          },
-          {
-            "name": "orderType",
-            "type": "uint8",
-            "internalType": "enum OrderType"
-          },
-          {
-            "name": "inputs",
-            "type": "bytes",
-            "internalType": "bytes"
-          },
-          {
-            "name": "signer",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "nonce",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
+        "name": "accountId",
+        "type": "uint128",
+        "internalType": "uint128"
       },
       {
-        "name": "signature",
-        "type": "tuple",
-        "internalType": "struct EIP712Signature",
-        "components": [
-          {
-            "name": "v",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "r",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "s",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "deadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },
@@ -2305,6 +2219,22 @@
     "type": "error",
     "name": "ZeroAddress",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroSlTpOrderSize",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "accountId",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ]
   },
   {
     "type": "error",

@@ -15,9 +15,7 @@ use alloy::{
 };
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
-use eyre::WrapErr;
 use rust_decimal::{prelude::*, Decimal};
-use rust_decimal_macros::dec;
 use tracing::*;
 
 #[derive(Debug)]
@@ -351,13 +349,7 @@ impl HttpProvider {
                 batch_order.price_limit, //
                 encoded_input_bytes);
             } else if batch_order.order_type == data_types::OrderType::Limit {
-                let order_base: I256 = (
-                    batch_order.order_base * PRICE_MULTIPLIER
-                    //                    * if batch_order.is_long {
-                    //                        dec!(1)
-                    //                    } else {
-                    //                        dec!(-1)                    }
-                )
+                let order_base: I256 = (batch_order.order_base * PRICE_MULTIPLIER)
                     .trunc()
                     .to_string()
                     .parse()
@@ -548,9 +540,7 @@ impl HttpProvider {
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     debug!("Reason string:{:?}", reason_bytes);
 
-    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
-        .wrap_err("Failed to decode reason_string")
-    {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true) {
         Ok(decoded_error) => match decoded_error {
             RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
                 error!("reason error={:?}", nonce_already_used);
