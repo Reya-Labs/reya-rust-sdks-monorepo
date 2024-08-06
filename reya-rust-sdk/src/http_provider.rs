@@ -88,6 +88,12 @@ sol!(
         uint256 trigger_price;  // stop_price!
         uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
     }
+
+    struct ExecuteInputBytes
+    {
+        int256 order_base;  // price!
+        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+    }
 );
 /**
  * HTTP Provider
@@ -308,6 +314,7 @@ impl HttpProvider {
     ///
     /// '''
     ///
+
     pub async fn execute_batch(
         &self,
         private_key: &String,
@@ -335,6 +342,12 @@ impl HttpProvider {
             trace!("Executing batch order:{:?}", batch_order);
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
+            let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
+                .trunc() // take only the integer part
+                .to_string()
+                .parse()
+                .unwrap();
+
             if batch_order.order_type == data_types::OrderType::StopLoss
                 || batch_order.order_type == data_types::OrderType::TakeProfit
             {
@@ -346,33 +359,40 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
-                    .trunc() // take only the integer part
+                let batch_execute_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
+                    is_long: batch_order.is_long,
+                    trigger_price: trigger_price,
+                    price_limit: batch_order.price_limit,
+                };
+
+                encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
+
+                trace!("SL/TP Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                batch_order.is_long, //
+                trigger_price, //
+                batch_order.price_limit, //
+                encoded_input_bytes);
+            } else if batch_order.order_type == data_types::OrderType::Limit {
+                let order_base: I256 = (batch_order.order_base * PRICE_MULTIPLIER)
+                    .trunc()
                     .to_string()
                     .parse()
                     .unwrap();
 
-                let mut price_limit: U256 = U256::ZERO;
-                if batch_order.is_long {
-                    price_limit = U256::MAX;
-                }
-
-                let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
-                    is_long: batch_order.is_long,
-                    trigger_price: trigger_price,
-                    price_limit: price_limit,
+                let execute_input_bytes: ExecuteInputBytes = ExecuteInputBytes {
+                    order_base: order_base,
+                    price_limit: trigger_price,
                 };
+                encoded_input_bytes = execute_input_bytes.abi_encode_sequence();
 
-                encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
-
-                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                trace!("LO Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                batch_order.price_limit, //
-                encoded_input_bytes );
+                order_base, //
+                encoded_input_bytes);
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
 
             let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -560,9 +580,7 @@ impl HttpProvider {
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     debug!("Reason string:{:?}", reason_bytes);
 
-    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
-        .wrap_err("Failed to decode reason_string")
-    {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true) {
         Ok(decoded_error) => match decoded_error {
             RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
                 error!("reason error={:?}", nonce_already_used);
