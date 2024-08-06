@@ -138,6 +138,7 @@ pub struct BatchOrder {
     pub order_type: OrderType,
     /// side(+/- = buy/sell) + volume/quantity
     pub order_base: Decimal,
+    pub pool_price: Decimal,
     /// stop price only set when order type = stop_loss
     pub trigger_price: Decimal,
     pub price_limit: U256,
