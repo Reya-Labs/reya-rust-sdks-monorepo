@@ -99,6 +99,15 @@ sol!(
     "./transactions/abi/CoreProxy.json"
 );
 
+// Codegen from ABI file to interact with the multicall2 contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    Multicall2,
+    "./transactions/abi/Multicall2.json"
+);
+
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]
@@ -181,4 +190,11 @@ pub struct TriggerAutoExchangeParams {
     pub requested_quote_amount: U256,
     pub collateral: Address,
     pub in_collateral: Address,
+}
+
+// call object for multicall
+pub struct Call {
+    pub target: Address,
+    // todo: p1: should this be a bytes type?
+    pub call_data: String,
 }
