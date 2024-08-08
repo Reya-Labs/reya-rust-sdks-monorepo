@@ -2,9 +2,9 @@
 resolver = "2"
 members = [
   #"examples/*",
-           "reya-rust-test-app",
-           "reya-rust-sdk"
-            ]
+   "reya-rust-test-app",
+    "reya-rust-sdk"
+]
 
 [workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.
