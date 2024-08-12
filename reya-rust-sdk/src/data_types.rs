@@ -1,6 +1,4 @@
-use alloy::primitives::Address;
-use alloy::primitives::I256;
-use alloy::primitives::U256;
+use alloy::primitives::{Address, I256, U256};
 use alloy::sol;
 use alloy_primitives::Bytes;
 use dotenv::dotenv;
@@ -8,9 +6,11 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::env;
 use url::Url;
+use serde::{Deserialize, Serialize};
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
+
 ///
 /// configuration struct for the sdk
 ///
@@ -90,6 +90,7 @@ pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 pub const MULTICALL_ADDRESS: &str = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
 // call object for multicall
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Call {
     pub target: Address,
     pub calldata: Vec<u8>,
@@ -227,5 +228,21 @@ pub struct TriggerAutoExchangeParams {
 #[derive(Debug)]
 pub struct TryAggregateParams {
     pub require_success: bool,
-    pub calls: Vec<Bytes>,
+    pub calls: Vec<Bytes>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StorkSignedPayload {
+    pub oracle_pub_key: Address,
+    pub price_payload: StorkPricePayload,
+    pub r: [u8; 32],
+    pub s: [u8; 32],
+    pub v: [u8; 1],
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StorkPricePayload {
+    pub asset_pair_id: String, 
+    pub timestamp: U256,
+    pub price: U256,
 }
