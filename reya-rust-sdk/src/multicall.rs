@@ -40,8 +40,8 @@ pub fn encode_optional_multicall(calls: Vec<Call>) -> Call {
     }
 } 
 
-pub async fn multicall_oracle_prepend(call: Call) -> eyre::Result<Call> {
-    let price_update_calls = multicall_oracle_append().await;
+pub async fn multicall_oracle_prepend(call: Call, stork_prices: &mut Vec<StorkSignedPayload>) -> eyre::Result<Call> {
+    let price_update_calls = multicall_oracle_append(stork_prices);
     let price_update_call = encode_optional_multicall(price_update_calls);
 
     return Ok(encode_strict_multicall(vec![
@@ -64,14 +64,6 @@ pub struct StorkSignedPayload {
     pub v: u8,
 }
 
-pub async fn get_latest_stork_prices_api() -> Vec<StorkSignedPayload> {
-    return vec![];
-}
-
-pub async fn get_latest_stork_prices_redis() -> Vec<StorkSignedPayload> {
-    return vec![];
-}
-
 pub fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) -> Vec<u8> {
     let oracle_pub_key = Address::from_str(signed_price_payload.oracle_pub_key.as_str()).unwrap();
     let asset_pair_id = signed_price_payload.price_payload.asset_pair_id.clone();
@@ -90,13 +82,7 @@ pub fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPaylo
     return calldata.abi_encode();
 }
 
-pub async fn multicall_oracle_append() -> Vec<Call> {
-    let stork_prices = &mut get_latest_stork_prices_redis().await;
-
-    if stork_prices.len() == 0 {
-        *stork_prices = get_latest_stork_prices_api().await;
-    }
-
+pub fn multicall_oracle_append(stork_prices: &mut Vec<StorkSignedPayload>) -> Vec<Call> {
     let oracle_adapters_contract_address = load_enviroment_config().oracle_adapters_contract_address;
 
     return stork_prices.iter().map(|x| Call {
