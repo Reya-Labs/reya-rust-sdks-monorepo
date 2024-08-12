@@ -19,6 +19,8 @@ pub struct SdkConfig {
     pub core_proxy_address: String,
     pub order_gateway_contract_address: String,
     pub passiv_perp_instrument_address: String,
+    pub oracle_adapters_contract_address: String,
+    pub stork_api_key: String,
     pub private_key: String,
     pub rpc_url: Url,
     pub counter_party_id: u128,
@@ -39,8 +41,16 @@ pub fn load_enviroment_config() -> SdkConfig {
         .expect("Passive perp instrument address must be set as environment variable")
         .to_lowercase();
 
+    let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
+        .expect("Oracle adapters contract address must be set as environment variable")
+        .to_lowercase();
+
     let private_key = env::var("PRIVATE_KEY")
         .expect("Private key must be set as environment variable")
+        .to_lowercase();
+
+    let stork_api_key = env::var("STORK_API_KEY")
+        .expect("Stork api key must be set as environment variable")
         .to_lowercase();
 
     let rpc_url = Url::parse(
@@ -58,13 +68,16 @@ pub fn load_enviroment_config() -> SdkConfig {
     );
 
     let sdk_config = SdkConfig {
-        core_proxy_address: core_proxy_address,
-        order_gateway_contract_address: order_gateway_contract_address,
-        passiv_perp_instrument_address: passiv_perp_instrument_address,
-        private_key: private_key,
+        core_proxy_address,
+        order_gateway_contract_address,
+        passiv_perp_instrument_address,
+        oracle_adapters_contract_address,
+        stork_api_key,
+        private_key,
         rpc_url: rpc_url.unwrap(),
         counter_party_id: counter_party_id.unwrap(),
     };
+
     return sdk_config;
 }
 
@@ -72,6 +85,15 @@ pub fn load_enviroment_config() -> SdkConfig {
 
 // exchanges
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
+
+// multicall3 contract address
+pub const MULTICALL_ADDRESS: &str = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
+// call object for multicall
+pub struct Call {
+    pub target: Address,
+    pub calldata: Vec<u8>,
+}
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
@@ -107,6 +129,24 @@ sol!(
     // collection of all rcp errors from Core, PassivePerp and OrderGateway
     RpcErrors,
     "./transactions/abi/Errors.json"
+);
+
+// Codegen from ABI file to interact with the multicall3 contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    Multicall3,
+    "./transactions/abi/Multicall3.json"
+);
+
+// Codegen from ABI file to interact with the oracle adapters contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    OracleAdaptersProxy,
+    "./transactions/abi/OracleAdaptersProxy.json"
 );
 
 #[allow(dead_code)]
