@@ -140,18 +140,6 @@ async fn execute_order(
 }
 
 #[allow(dead_code)]
-async fn execute_batch_orders(
-    private_key: &String,
-    http_provider: &http_provider::HttpProvider,
-    batch_orders: Vec<data_types::BatchOrder>,
-) {
-    let transaction_hash = http_provider
-        .execute_batch(&private_key, &batch_orders)
-        .await;
-    info!("Execute batch orders, tx hash:{:?}", transaction_hash);
-}
-
-#[allow(dead_code)]
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // default warn level logging

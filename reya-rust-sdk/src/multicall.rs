@@ -2,7 +2,6 @@ use std::str::FromStr;
 use alloy_sol_types::{SolCall, SolValue};
 use alloy_primitives::{Address, Bytes};
 use crate::data_types::{Call, Multicall3, OracleAdaptersProxy, StorkSignedPayload, MULTICALL_ADDRESS, load_enviroment_config};
-use tracing::*;
 
 fn encode_multicall(require_success: bool, calls: Vec<Call>) -> Vec<u8> {
 
@@ -33,11 +32,8 @@ pub fn encode_optional_multicall(calls: Vec<Call>) -> Call {
 } 
 
 pub fn multicall_oracle_prepend(call: Call, stork_prices: &Vec<StorkSignedPayload>) -> Call {
-    info!("AAAA");
     let price_update_calls = multicall_oracle_append(stork_prices);
-    info!("BBBB");
     let price_update_call = encode_optional_multicall(price_update_calls);
-    info!("CCCC");
 
     return encode_strict_multicall(vec![
         price_update_call,
@@ -46,8 +42,6 @@ pub fn multicall_oracle_prepend(call: Call, stork_prices: &Vec<StorkSignedPayloa
 }
 
 fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) -> Vec<u8> {
-    info!("FFFF");
-
     let oracle_pub_key = signed_price_payload.oracle_pub_key;
     let asset_pair_id = signed_price_payload.price_payload.asset_pair_id.clone();
     let timestamp = signed_price_payload.price_payload.timestamp;
@@ -66,9 +60,7 @@ fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) 
 }
 
 fn multicall_oracle_append(stork_prices: &Vec<StorkSignedPayload>) -> Vec<Call> {
-    info!("DDDD");
     let oracle_adapters_contract_address = load_enviroment_config().oracle_adapters_contract_address;
-    info!("EEEE");
 
     return stork_prices.iter().map(|x| Call {
         target: Address::from_str(oracle_adapters_contract_address.as_str()).unwrap(),
