@@ -2,6 +2,7 @@ use alloy::primitives::Address;
 use alloy::primitives::I256;
 use alloy::primitives::U256;
 use alloy::sol;
+use alloy_primitives::Bytes;
 use dotenv::dotenv;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -181,4 +182,10 @@ pub struct TriggerAutoExchangeParams {
     pub requested_quote_amount: U256,
     pub collateral: Address,
     pub in_collateral: Address,
+}
+
+#[derive(Debug)]
+pub struct TryAggregateParams {
+    pub require_success: bool,
+    pub calls: Vec<Bytes>,
 }

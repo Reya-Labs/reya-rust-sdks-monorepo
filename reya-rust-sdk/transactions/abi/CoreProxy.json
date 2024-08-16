@@ -202,5 +202,49 @@
         }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "calculateMaxQuoteToCoverInAutoExchange",
+    "inputs": [
+      {
+        "name": "accountId",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "inCollateral",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tryAggregate",
+    "inputs": [
+      { "name": "requireSuccess", "type": "bool", "internalType": "bool" },
+      { "name": "calls", "type": "bytes[]", "internalType": "bytes[]" }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "tuple[]",
+        "internalType": "struct MulticallResult[]",
+        "components": [
+          { "name": "success", "type": "bool", "internalType": "bool" },
+          { "name": "returnData", "type": "bytes", "internalType": "bytes" }
+        ]
+      }
+    ],
+    "stateMutability": "payable"
   }
 ]
