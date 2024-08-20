@@ -24,17 +24,17 @@ use tracing::*;
 
 #[derive(Debug)]
 pub enum ReasonError {
-    NonceAlreadyUsed,
-    SignerNotAuthorized,
-    InvalidSignature,
-    OrderTypeNotFound,
-    IncorrectStopLossDirection,
-    ZeroStopLossOrderSize,
-    MatchOrderOutputsLengthMismatch,
+    AccountBelowIM,
     HigherExecutionPrice,
+    InvalidSignature,
     LowerExecutionPrice,
-    UnknownError,
-    DecodingError,
+    NonceAlreadyUsed,
+    OrderTypeNotFound,
+    SignerNotAuthorized,
+    StalePriceDetected,
+    ZeroSlTpOrderSize,
+    UnknownError, // special error when the decoded error is not known
+    DecodingError, // special error when the decoding of the error fails
 }
 
 #[derive(Debug)]
@@ -582,76 +582,74 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
 
     match RpcErrorsErrors::abi_decode(&reason_bytes, true) {
         Ok(decoded_error) => match decoded_error {
-            RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
-                error!("reason error={:?}", nonce_already_used);
+            RpcErrorsErrors::AccountBelowIM(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
                 return (
-                    String::from("NonceAlreadyUsed"),
-                    ReasonError::NonceAlreadyUsed,
+                    String::from("AccountBelowIM"),
+                    ReasonError::AccountBelowIM,
                 );
             }
-            RpcErrorsErrors::SignerNotAuthorized(signer_not_authorized) => {
-                error!("reason error={:?}", signer_not_authorized);
-                return (
-                    String::from("SignerNotAuthorized"),
-                    ReasonError::SignerNotAuthorized,
-                );
-            }
-            RpcErrorsErrors::InvalidSignature(invalid_signature) => {
-                error!("reason error={:?}", invalid_signature);
-                return (
-                    String::from("InvalidSignature"),
-                    ReasonError::InvalidSignature,
-                );
-            }
-            RpcErrorsErrors::OrderTypeNotFound(order_type_not_found) => {
-                error!("reason error={:?}", order_type_not_found);
-                return (
-                    String::from("OrderTypeNotFound"),
-                    ReasonError::OrderTypeNotFound,
-                );
-            }
-            RpcErrorsErrors::IncorrectStopLossDirection(incorrect_stop_loss_direction) => {
-                error!("reason error={:?}", incorrect_stop_loss_direction);
-                return (
-                    String::from("IncorrectStopLossDirection"),
-                    ReasonError::IncorrectStopLossDirection,
-                );
-            }
-            RpcErrorsErrors::ZeroStopLossOrderSize(zero_stop_loss_order_size) => {
-                error!("reason error={:?}", zero_stop_loss_order_size);
-                return (
-                    String::from("ZeroStopLossOrderSize"),
-                    ReasonError::ZeroStopLossOrderSize,
-                );
-            }
-            RpcErrorsErrors::MatchOrderOutputsLengthMismatch(
-                match_order_outputs_length_mis_match,
-            ) => {
-                error!("reason error={:?}", match_order_outputs_length_mis_match);
-                return (
-                    String::from("MatchOrderOutputsLengthMismatch"),
-                    ReasonError::MatchOrderOutputsLengthMismatch,
-                );
-            }
-            RpcErrorsErrors::HigherExecutionPrice(higher_execution_price) => {
-                error!("reason error={:?}", higher_execution_price);
+            RpcErrorsErrors::HigherExecutionPrice(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
                 return (
                     String::from("HigherExecutionPrice"),
                     ReasonError::HigherExecutionPrice,
                 );
             }
-            RpcErrorsErrors::LowerExecutionPrice(lower_execution_price) => {
-                error!("reason error={:?}", lower_execution_price);
+            RpcErrorsErrors::InvalidSignature(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("InvalidSignature"),
+                    ReasonError::InvalidSignature,
+                );
+            }
+            RpcErrorsErrors::LowerExecutionPrice(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
                 return (
                     String::from("LowerExecutionPrice"),
                     ReasonError::LowerExecutionPrice,
                 );
             }
+            RpcErrorsErrors::NonceAlreadyUsed(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("NonceAlreadyUsed"),
+                    ReasonError::NonceAlreadyUsed,
+                );
+            }
+            RpcErrorsErrors::OrderTypeNotFound(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("OrderTypeNotFound"),
+                    ReasonError::OrderTypeNotFound,
+                );
+            }
+            RpcErrorsErrors::SignerNotAuthorized(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("SignerNotAuthorized"),
+                    ReasonError::SignerNotAuthorized,
+                );
+            }
+            RpcErrorsErrors::StalePriceDetected(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("StalePriceDetected"),
+                    ReasonError::StalePriceDetected,
+                );
+            }
+            RpcErrorsErrors::ZeroSlTpOrderSize(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("ZeroSlTpOrderSize"),
+                    ReasonError::ZeroSlTpOrderSize,
+                );
+            }
             // all other errors are mapped to UnknownError
             _ => {
-                info!("RPC error:{:?}", decoded_error);
+                info!("[Decoding reason] Unknown error: {:?}", decoded_error);
                 return (
-                    format!("RPC error={:?}", decoded_error),
+                    format!("RPC error = {:?}", decoded_error),
                     ReasonError::UnknownError,
                 );
             }
