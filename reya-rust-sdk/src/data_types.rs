@@ -2,6 +2,7 @@ use alloy::primitives::Address;
 use alloy::primitives::I256;
 use alloy::primitives::U256;
 use alloy::sol;
+use alloy_primitives::Bytes;
 use dotenv::dotenv;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -9,6 +10,7 @@ use std::env;
 use url::Url;
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
+pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
 ///
 /// configuration struct for the sdk
 ///
@@ -67,16 +69,9 @@ pub fn load_enviroment_config() -> SdkConfig {
 }
 
 #[allow(dead_code)]
+
 // exchanges
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
-
-// markets
-// todo: p1 add sol market
-pub const ETH_MARKET_ID: u32 = 1u32; //1=reya eth market
-pub const BTC_MARKET_ID: u32 = 2u32; //2=reya btc market
-pub const SOL_MARKET_ID: u32 = 3u32; //2=reya sol market
-
-pub const MARKETS: [u32; 3] = [SOL_MARKET_ID, ETH_MARKET_ID, BTC_MARKET_ID];
 
 // Codegen from ABI file to interact with the reya order gateway proxy contract.
 sol!(
@@ -131,6 +126,7 @@ pub enum CommandType {
 pub enum OrderType {
     StopLoss = 0,
     TakeProfit = 1,
+    Limit = 2,
 }
 
 /// order struct to execute orders in a batch
@@ -141,11 +137,12 @@ pub struct BatchOrder {
     pub market_id: u128,
     pub exchange_id: u128,
     pub order_type: OrderType,
-    /// side(+/- = buy/sell) + volume i256
-    pub order_base: I256,
+    /// side(+/- = buy/sell) + volume/quantity
+    pub order_base: Decimal,
+    pub pool_price: Decimal,
     /// stop price only set when order type = stop_loss
     pub trigger_price: Decimal,
-    pub price_limit: Decimal,
+    pub price_limit: U256,
     pub is_long: bool,
     pub signer_address: Address,
     pub order_nonce: U256,
@@ -175,4 +172,20 @@ pub struct MarginInfo {
     pub initial_buffer_delta: I256,
     /// Information required to compute health of position in the context of adl liquidations
     pub liquidation_margin_requirement: U256,
+}
+
+/// auto exchange inputs
+#[derive(Debug)]
+pub struct TriggerAutoExchangeParams {
+    pub account_id: u128,
+    pub liquidator_account_id: u128,
+    pub requested_quote_amount: U256,
+    pub collateral: Address,
+    pub in_collateral: Address,
+}
+
+#[derive(Debug)]
+pub struct TryAggregateParams {
+    pub require_success: bool,
+    pub calls: Vec<Bytes>,
 }

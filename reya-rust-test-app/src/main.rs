@@ -1,8 +1,5 @@
 #[allow(dead_code)]
-use alloy::{
-    primitives::{address, I256, U256},
-    signers::local::PrivateKeySigner,
-};
+use alloy::primitives::{address, I256, U256};
 use clap::*;
 use core::result::Result::Ok;
 use dotenv::dotenv;
@@ -37,10 +34,8 @@ pub struct JsonBatchOrder {
 
 async fn create_account(private_key: &String, http_provider: &http_provider::HttpProvider) {
     let account_owner_address = address!("f8f6b70a36f4398f0853a311dc6699aba8333cc1");
-    let signer: PrivateKeySigner = private_key.parse().unwrap();
-
     let transaction_hash = http_provider
-        .create_account(signer, &account_owner_address)
+        .create_account(private_key, &account_owner_address)
         .await;
 
     info!("Created account, tx hash:{:?}", transaction_hash);
@@ -102,19 +97,15 @@ async fn get_execute_batch_receipt_logs(
                     None => {
                         // no errors
                         info!(
-                            "Order executed succesfully, block time:{:?}",
-                            batch_execute_output
+                            "Order executed succesfully {:?}, {:?}",
+                            batch_execute_hash, batch_execute_output,
                         );
                     }
                     Some(reason_error_code) => {
                         //
                         match reason_error_code {
                             _ => {
-                                error!(
-                                    "ErrorCode={:?}, reason={:?}",
-                                    reason_error_code,
-                                    Some(batch_execute_output.reason_str)
-                                );
+                                error!("ErrorCode={:?}", reason_error_code);
                             }
                         }
                     }
@@ -135,11 +126,9 @@ async fn execute_order(
     order_base: &I256,
     order_price_limit: &U256,
 ) {
-    let signer: PrivateKeySigner = sdk_config.private_key.parse().unwrap();
-
     let transaction_hash = http_provider
         .execute(
-            signer,
+            &sdk_config.private_key,
             account_id,
             market_id,
             exchange_id,
@@ -156,13 +145,10 @@ async fn execute_batch_orders(
     http_provider: &http_provider::HttpProvider,
     batch_orders: Vec<data_types::BatchOrder>,
 ) {
-    let signer: PrivateKeySigner = private_key.parse().unwrap();
-
-    let transaction_receipt = http_provider.execute_batch(signer, &batch_orders).await;
-    info!(
-        "Execute batch orders, tx hash:{:?}",
-        transaction_receipt.unwrap().transaction_hash
-    );
+    let transaction_hash = http_provider
+        .execute_batch(&private_key, &batch_orders)
+        .await;
+    info!("Execute batch orders, tx hash:{:?}", transaction_hash);
 }
 
 #[allow(dead_code)]
@@ -244,7 +230,7 @@ async fn main() -> eyre::Result<()> {
             http_provider::HttpProvider::new(&sdk_config);
 
         let batch_execute_hash = String::from(packages[0]); // batch_execute_hash
-        println!("get log{} {}", sdk_config.rpc_url, batch_execute_hash);
+        debug!("Get log{} {}", sdk_config.rpc_url, batch_execute_hash);
         get_execute_batch_receipt_logs(batch_execute_hash, &http_provider).await;
     } else
     // handle batche execute request

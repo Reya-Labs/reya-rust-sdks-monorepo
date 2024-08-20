@@ -3,20 +3,24 @@ use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
+use crate::data_types::TryAggregateParams;
 use crate::data_types::PRICE_MULTIPLIER;
-
+use crate::http_provider::CoreProxy::MulticallResult;
 use alloy::{
+    contract::Error,
     network::EthereumWallet,
     primitives::{aliases, Address, Bytes, B256, I256, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::TransactionReceipt,
+    rpc, // used for TransactionReceipt
     signers::local::PrivateKeySigner,
     sol,
     sol_types::SolEvent,
+    transports::RpcError,
 };
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
-use eyre::WrapErr;
+use eyre::{Report, WrapErr};
+use hex::FromHex;
 use rust_decimal::{prelude::*, Decimal};
 use tracing::*;
 
@@ -36,11 +40,32 @@ pub enum ReasonError {
 }
 
 #[derive(Debug)]
+pub enum AEReasonError {
+    SameQuoteAndcollateral,
+    ZeroAddress,
+    SameAccountId,
+    AccountNotFound,
+    AccountPermissionDenied,
+    CollateralPoolCollision,
+    CollateralIsNotQuote,
+    CollateralPoolNotFound,
+    WithinBubbleCoverageNotExhausted,
+    AccountNotEligibleForAutoExchange,
+    CollateralCapExceeded,
+    AccountBelowIM,
+    NegativeAccountRealBalance,
+    DecodingError,
+    UnknownError,
+}
+
+#[derive(Debug)]
 pub struct BatchExecuteOutput {
+    pub market_id: u128,
     pub order_index: u32,
     pub execution_price: Decimal,
-    pub order_nonce: aliases::TxNonce,
+    pub order_nonce: u128,
     pub block_timestamp: aliases::BlockTimestamp,
+    pub order_type: u8,
     // optional error details will only be set if an error occured
     pub reason_str: Option<String>,
     pub reason_error: Option<ReasonError>,
@@ -63,6 +88,12 @@ sol!(
     {
         bool is_long;
         uint256 trigger_price;  // stop_price!
+        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
+    }
+
+    struct ExecuteInputBytes
+    {
+        int256 order_base;  // price!
         uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
     }
 );
@@ -120,22 +151,25 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
-    /// let transaction_hash = http_provider.create_account(signer, &account_owner_address).await;
+    /// let transaction_hash = http_provider.create_account(private_key, &account_owner_address).await;
     ///
     /// info!("Created account, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn create_account(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         account_owner_address: &Address,
     ) -> eyre::Result<B256> // return the transaction hash
     {
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
 
         // core create account
@@ -181,7 +215,7 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
     /// let market_id = 1u128;
     ///
@@ -191,13 +225,13 @@ impl HttpProvider {
     ///
     /// let order_price_limit: U256 = "4000000000000000000000".parse().unwrap();
     ///
-    /// let transaction_hash = http_provider.execute(signer, account_id, market_id, exchange_id, order_base, order_price_limit).await;
+    /// let transaction_hash = http_provider.execute(private_key, account_id, market_id, exchange_id, order_base, order_price_limit).await;
     ///
     /// info!("Execute match order, tx hash:{:?}", transaction_hash);
     ///  '''
     pub async fn execute(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         account_id: u128,
         market_id: u128,
         exchange_id: u128,
@@ -214,10 +248,13 @@ impl HttpProvider {
             order_price_limit
         );
 
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
 
         let proxy = OrderGatewayProxy::new(
@@ -243,13 +280,8 @@ impl HttpProvider {
 
         let builder = proxy.execute(account_id, vec![command]);
         let transaction_result = builder.send().await?;
-        let receipt = transaction_result.get_receipt().await?;
 
-        if receipt.inner.is_success() {
-            debug!("Execute receipt:{:?}", receipt);
-        }
-
-        eyre::Ok(receipt.transaction_hash)
+        eyre::Ok(transaction_result.tx_hash().clone())
     }
 
     /// Executes a batch of orders and will return a transaction hash when the batch is executed.
@@ -276,30 +308,34 @@ impl HttpProvider {
     ///
     /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
     ///
-    /// let signer: PrivateKeySigner = private_key.parse().unwrap();
+    /// let private_key:String=<your private key>;
     ///
     /// let mut batch_orders:Vec<data_types::BatchOrder> = make_batch();
     ///
-    /// let transaction_hash = http_provider.execute_batch(signer, batch_orders).await;
+    /// let transaction_hash = http_provider.execute_batch(private_key, batch_orders).await;
     ///
     /// '''
     ///
+
     pub async fn execute_batch(
         &self,
-        signer: PrivateKeySigner,
+        private_key: &String,
         batch_orders: &Vec<data_types::BatchOrder>,
-    ) -> eyre::Result<TransactionReceipt> // return the transaction receipt
+    ) -> eyre::Result<B256> // return the transaction hash
     {
         trace!("Start Execute batch");
 
-        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
-        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
 
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .wallet(EthereumWallet::from(signer))
+            .wallet(wallet)
             .on_http(self.sdk_config.rpc_url.clone());
+
+        let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
+        let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
 
         // add all order ans signatures to the batch vector
         for i in 0..batch_orders.len() {
@@ -308,6 +344,12 @@ impl HttpProvider {
             trace!("Executing batch order:{:?}", batch_order);
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
+            let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
+                .trunc() // take only the integer part
+                .to_string()
+                .parse()
+                .unwrap();
+
             if batch_order.order_type == data_types::OrderType::StopLoss
                 || batch_order.order_type == data_types::OrderType::TakeProfit
             {
@@ -319,33 +361,40 @@ impl HttpProvider {
                 //     price_limit,   // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
                 // }// endcoded
 
-                let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
-                    .trunc() // take only the integer part
+                let batch_execute_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
+                    is_long: batch_order.is_long,
+                    trigger_price: trigger_price,
+                    price_limit: batch_order.price_limit,
+                };
+
+                encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
+
+                trace!("SL/TP Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                batch_order.is_long, //
+                trigger_price, //
+                batch_order.price_limit, //
+                encoded_input_bytes);
+            } else if batch_order.order_type == data_types::OrderType::Limit {
+                let order_base: I256 = (batch_order.order_base * PRICE_MULTIPLIER)
+                    .trunc()
                     .to_string()
                     .parse()
                     .unwrap();
 
-                let mut price_limit: U256 = U256::ZERO;
-                if batch_order.is_long {
-                    price_limit = U256::MAX;
-                }
-
-                let batch_execut_input_bytes: BatchExecuteInputBytes = BatchExecuteInputBytes {
-                    is_long: batch_order.is_long,
-                    trigger_price: trigger_price,
-                    price_limit: price_limit,
+                let execute_input_bytes: ExecuteInputBytes = ExecuteInputBytes {
+                    order_base: order_base,
+                    price_limit: trigger_price,
                 };
+                encoded_input_bytes = execute_input_bytes.abi_encode_sequence();
 
-                encoded_input_bytes = batch_execut_input_bytes.abi_encode_sequence();
-
-                trace!("Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
+                trace!("LO Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
                 batch_order.is_long, //
                 trigger_price, //
-                batch_order.price_limit, //
-                encoded_input_bytes );
+                order_base, //
+                encoded_input_bytes);
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // hardcode counter party id = 2 for production, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
 
             let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -376,20 +425,75 @@ impl HttpProvider {
         );
 
         let builder = proxy.batchExecute(orders, signatures);
-        let new_gas_limit = (builder.estimate_gas().await.unwrap() * 12u128) / 10u128;
+        let new_gas_limit = (builder.estimate_gas().await? * 12u128) / 10u128;
         let b2 = builder.gas(new_gas_limit);
 
         let transaction_result = b2.send().await?;
 
-        let receipt = transaction_result.get_receipt().await?;
-
-        if receipt.inner.is_success() {
-            trace!("BatchExecuted receipt={:?}", receipt);
-        }
-
         trace!("End Execute batch");
 
-        eyre::Ok(receipt)
+        eyre::Ok(transaction_result.tx_hash().clone())
+    }
+
+    /// Executes an auto exchange on the core proxy contract and returns the tx hash if succesful.
+    ///
+    /// In case it fails, it will attempt to decide the contract error. It will return the
+    /// decoded message or an empty error if unable to decode.
+    pub async fn trigger_auto_exchange(
+        &self,
+        private_key: &String,
+        params: data_types::TriggerAutoExchangeParams,
+    ) -> eyre::Result<B256> // return the transaction receipt
+    {
+        trace!("Start Trigger Auto-exchange");
+
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        trace!(
+            "Execution auto-exchange of account={:?}, collateral={:?}",
+            params.account_id,
+            params.collateral
+        );
+
+        let proxy = CoreProxy::new(
+            self.sdk_config.core_proxy_address.parse()?,
+            provider.clone(),
+        );
+
+        let inputs: CoreProxy::TriggerAutoExchangeInput = CoreProxy::TriggerAutoExchangeInput {
+            accountId: params.account_id,
+            liquidatorAccountId: params.liquidator_account_id,
+            requestedQuoteAmount: params.requested_quote_amount,
+            collateral: params.collateral,
+            inCollateral: params.in_collateral,
+        };
+
+        let builder = proxy.triggerAutoExchange(inputs);
+
+        match builder.send().await {
+            Ok(transaction_result) => {
+                trace!("End Trigger Auto-exchange");
+                return eyre::Ok(transaction_result.tx_hash().clone());
+            }
+            Err(e) => match handle_rpc_error(e) {
+                Some(error_string) => {
+                    return Err(Report::msg(format!(
+                        "Auto-exchange transaction reverted {:?}",
+                        error_string
+                    )));
+                }
+                None => {
+                    return Err(Report::msg(format!("Auto-exchange transaction reverted")));
+                }
+            },
+        }
     }
 
     /// gets the account of the owner that belongs to the provided account id and returns the transaction hash on success
@@ -428,7 +532,7 @@ impl HttpProvider {
     pub async fn get_transaction_receipt(
         &self,
         tx_hash: alloy_primitives::FixedBytes<32>,
-    ) -> Option<TransactionReceipt> {
+    ) -> Option<rpc::types::TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .on_http(self.sdk_config.rpc_url.clone());
@@ -437,7 +541,7 @@ impl HttpProvider {
 
         match transaction_receipt_result {
             Ok(transaction_receipt) => {
-                info!(
+                debug!(
                     "Transaction receipt:{:?}",
                     Some(transaction_receipt.clone())
                 );
@@ -470,6 +574,64 @@ impl HttpProvider {
 
         eyre::Ok(_0)
     }
+
+    pub async fn try_aggregate(
+        &self,
+        private_key: &String,
+        params: data_types::TryAggregateParams,
+    ) -> eyre::Result<B256> {
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+
+        let builder = proxy.tryAggregate(params.require_success, params.calls);
+
+        match builder.send().await {
+            Ok(transaction_result) => {
+                trace!("End Try Aggregate");
+                return eyre::Ok(transaction_result.tx_hash().clone());
+            }
+            Err(e) => match handle_rpc_error(e) {
+                Some(error_string) => {
+                    return Err(Report::msg(format!(
+                        "Try Aggregate transaction reverted {:?}",
+                        error_string
+                    )));
+                }
+                None => {
+                    return Err(Report::msg(format!("Try Aggregate transaction reverted")));
+                }
+            },
+        }
+    }
+
+    pub async fn try_aggregate_static_call(
+        &self,
+        sender_address: &String,
+        params: TryAggregateParams,
+    ) -> eyre::Result<Vec<MulticallResult>> {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+
+        let CoreProxy::tryAggregateReturn { result } = proxy
+            .tryAggregate(params.require_success, params.calls)
+            .from(sender_address.parse().unwrap())
+            .call()
+            .await?;
+
+        eyre::Ok(result)
+    }
 }
 
 ///
@@ -478,9 +640,7 @@ impl HttpProvider {
 fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     debug!("Reason string:{:?}", reason_bytes);
 
-    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
-        .wrap_err("Failed to decode reason_string")
-    {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true) {
         Ok(decoded_error) => match decoded_error {
             RpcErrorsErrors::NonceAlreadyUsed(nonce_already_used) => {
                 error!("reason error={:?}", nonce_already_used);
@@ -562,6 +722,159 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
     }
 }
 
+///
+/// decode the auto-exchange specific reason string to an Error
+///
+fn decode_auto_exchange_error(reason_bytes: Bytes) -> (String, AEReasonError) {
+    match RpcErrorsErrors::abi_decode(&reason_bytes, true)
+        .wrap_err("Failed to decode reason_string")
+    {
+        Ok(decoded_error) => match decoded_error {
+            RpcErrorsErrors::SameQuoteAndcollateral(same_quote_collateral) => {
+                error!("reason error={:?}", same_quote_collateral);
+                return (
+                    String::from("SameQuoteAndcollateral"),
+                    AEReasonError::SameQuoteAndcollateral,
+                );
+            }
+            RpcErrorsErrors::ZeroAddress(zero_address) => {
+                error!("reason error={:?}", zero_address);
+                return (String::from("ZeroAddress"), AEReasonError::ZeroAddress);
+            }
+            RpcErrorsErrors::SameAccountId(zero_address) => {
+                error!("reason error={:?}", zero_address);
+                return (String::from("SameAccountId"), AEReasonError::SameAccountId);
+            }
+            RpcErrorsErrors::AccountNotFound(account_not_found) => {
+                error!("reason error={:?}", account_not_found);
+                return (
+                    String::from("AccountNotFound"),
+                    AEReasonError::AccountNotFound,
+                );
+            }
+            RpcErrorsErrors::AccountPermissionDenied(account_permission_denied) => {
+                error!("reason error={:?}", account_permission_denied);
+                return (
+                    String::from("AccountPermissionDenied"),
+                    AEReasonError::AccountPermissionDenied,
+                );
+            }
+            RpcErrorsErrors::NegativeAccountRealBalance(negative_account_real_balance) => {
+                error!("reason error={:?}", negative_account_real_balance);
+                return (
+                    String::from("NegativeAccountRealBalance"),
+                    AEReasonError::NegativeAccountRealBalance,
+                );
+            }
+            RpcErrorsErrors::CollateralPoolCollision(collateral_pool_collision) => {
+                error!("reason error={:?}", collateral_pool_collision);
+                return (
+                    String::from("CollateralPoolCollision"),
+                    AEReasonError::CollateralPoolCollision,
+                );
+            }
+            RpcErrorsErrors::AccountBelowIM(account_below_im) => {
+                error!("reason error={:?}", account_below_im);
+                return (
+                    String::from("AccountBelowIM"),
+                    AEReasonError::AccountBelowIM,
+                );
+            }
+            RpcErrorsErrors::CollateralIsNotQuote(collateral_is_not_quote) => {
+                error!("reason error={:?}", collateral_is_not_quote);
+                return (
+                    String::from("CollateralIsNotQuote"),
+                    AEReasonError::CollateralIsNotQuote,
+                );
+            }
+            RpcErrorsErrors::CollateralPoolNotFound(collateral_pool_not_found) => {
+                error!("reason error={:?}", collateral_pool_not_found);
+                return (
+                    String::from("CollateralPoolNotFound"),
+                    AEReasonError::CollateralPoolNotFound,
+                );
+            }
+            RpcErrorsErrors::WithinBubbleCoverageNotExhausted(within_bubble) => {
+                error!("reason error={:?}", within_bubble);
+                return (
+                    String::from("WithinBubbleCoverageNotExhausted"),
+                    AEReasonError::WithinBubbleCoverageNotExhausted,
+                );
+            }
+            RpcErrorsErrors::AccountNotEligibleForAutoExchange(account_not_eligible) => {
+                error!("reason error={:?}", account_not_eligible);
+                return (
+                    String::from("AccountNotEligibleForAutoExchange"),
+                    AEReasonError::AccountNotEligibleForAutoExchange,
+                );
+            }
+            RpcErrorsErrors::CollateralCapExceeded(collateral_cap_exceeded) => {
+                error!("reason error={:?}", collateral_cap_exceeded);
+                return (
+                    String::from("CollateralCapExceeded"),
+                    AEReasonError::CollateralCapExceeded,
+                );
+            }
+            // all other errors are mapped to UnknownError
+            _ => {
+                info!("RPC error:{:?}", decoded_error);
+                return (
+                    format!("RPC error={:?}", decoded_error),
+                    AEReasonError::UnknownError,
+                );
+            }
+        },
+        Err(err) => {
+            return (format!("Error={:?}", err), AEReasonError::DecodingError);
+        }
+    }
+}
+
+///
+/// parses a contract error and attempts to decode it into a known error.
+/// does not return anything if decoding fails.
+///
+fn handle_rpc_error(e: Error) -> Option<String> {
+    match e {
+        Error::AbiError(revert_reason) => {
+            error!("[Error decoding] ABI error: {:?}", revert_reason);
+        }
+        Error::TransportError(error) => {
+            let RpcError::ErrorResp(e) = error else {
+                error!("[Error decoding] Failed to match ErrorResp {:?}", error);
+                return None;
+            };
+            match e.data {
+                Some(payload) => {
+                    let stt = payload.get().to_string();
+                    let trimmed_str = stt.trim_matches('"');
+                    let data_str = trimmed_str.trim_start_matches("0x");
+                    // Convert the hex string to bytes
+                    match Vec::from_hex(data_str) {
+                        Ok(bytes) => {
+                            let data = Bytes::from(bytes);
+                            let (reason, _) = decode_auto_exchange_error(data);
+                            info!("[Error decoding] Decoded error {:?}", reason);
+                            return Some(reason);
+                        }
+                        Err(e) => {
+                            error!(
+                                "[Error decoding] Failed to get error bytes with error {:?}",
+                                e
+                            )
+                        }
+                    }
+                }
+                None => error!("[Error decoding] Failed to get error response"),
+            }
+        }
+        _ => {
+            error!("[Error decoding] Transaction failed: {:?}", e);
+        }
+    }
+    return None;
+}
+
 /// Extract the batch execution output bytes, received from the transaction logs
 ///
 /// The fn will return a vector with BatchExecuteOutputs that should match the number of orders in an executed batch
@@ -570,7 +883,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
 ///
 /// On success it will also provide details on the execution like, executed price, block time etc... see BatchExecuteOutput for details
 pub fn extract_execute_batch_outputs(
-    batch_execute_receipt: &TransactionReceipt,
+    batch_execute_receipt: &rpc::types::TransactionReceipt,
 ) -> Vec<BatchExecuteOutput> {
     debug!("Extracting batch outputs");
 
@@ -595,12 +908,20 @@ pub fn extract_execute_batch_outputs(
                     .unwrap()
                     / data_types::PRICE_MULTIPLIER;
 
-                info!(
+                debug!(
                     "Successful order execution, execution price:{:?}, nonce={:?}",
                     execution_price, successful_order.order.nonce
                 );
 
+                let nonce: u128 = successful_order
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
+
                 result.push(BatchExecuteOutput {
+                    market_id: successful_order.order.marketId,
                     order_index: successful_order
                         .orderIndex
                         .to_string()
@@ -608,19 +929,13 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32),
 
                     execution_price: execution_price,
-
-                    order_nonce: successful_order
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
                     block_timestamp: successful_order
                         .blockTimestamp
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
+                    order_type: successful_order.order.orderType,
                     // no errors here
                     reason_str: None,
                     reason_error: None,
@@ -631,8 +946,15 @@ pub fn extract_execute_batch_outputs(
                 //
                 let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
                     log.log_decode().unwrap().inner.data;
+                let nonce: u128 = failed_order_message
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
 
                 result.push(BatchExecuteOutput {
+                    market_id: failed_order_message.order.marketId,
                     order_index: failed_order_message
                         .orderIndex
                         .to_string()
@@ -640,20 +962,13 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32),
 
                     execution_price: Decimal::from(0),
-
-                    order_nonce: failed_order_message
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
                     block_timestamp: failed_order_message
                         .blockTimestamp
                         .to_string()
                         .parse()
                         .unwrap_or(0u64),
-
+                    order_type: failed_order_message.order.orderType,
                     reason_str: Some(String::from("Failed")),
                     reason_error: Some(ReasonError::UnknownError),
                 });
@@ -663,10 +978,20 @@ pub fn extract_execute_batch_outputs(
                 // decode the error reason string
                 let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
                     log.log_decode().unwrap().inner.data;
+
                 debug!("failed order bytes struct={:?}", failed_order_bytes);
+
+                let nonce: u128 = failed_order_bytes
+                    .order
+                    .nonce
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0u128);
+
                 let (reason, reason_error) = decode_reason(failed_order_bytes.reason.clone());
 
                 result.push(BatchExecuteOutput {
+                    market_id: failed_order_bytes.order.marketId,
                     order_index: failed_order_bytes
                         .orderIndex
                         .to_string()
@@ -674,14 +999,8 @@ pub fn extract_execute_batch_outputs(
                         .unwrap_or(0u32), //
 
                     execution_price: Decimal::from(0),
-
-                    order_nonce: failed_order_bytes
-                        .order
-                        .nonce
-                        .to_string()
-                        .parse()
-                        .unwrap_or(0u64),
-
+                    order_nonce: nonce,
+                    order_type: failed_order_bytes.order.orderType,
                     block_timestamp: failed_order_bytes
                         .blockTimestamp
                         .to_string()
