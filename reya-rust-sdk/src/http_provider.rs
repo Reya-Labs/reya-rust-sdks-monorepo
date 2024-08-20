@@ -26,6 +26,7 @@ use tracing::*;
 pub enum ReasonError {
     AccountBelowIM,
     HigherExecutionPrice,
+    IncorrectOrderDirection,
     InvalidSignature,
     LowerExecutionPrice,
     NonceAlreadyUsed,
@@ -594,6 +595,13 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
                 return (
                     String::from("HigherExecutionPrice"),
                     ReasonError::HigherExecutionPrice,
+                );
+            }
+            RpcErrorsErrors::IncorrectOrderDirection(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("IncorrectOrderDirection"),
+                    ReasonError::IncorrectOrderDirection,
                 );
             }
             RpcErrorsErrors::InvalidSignature(err) => {
