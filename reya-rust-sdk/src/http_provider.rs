@@ -634,14 +634,6 @@ impl HttpProvider {
     }
 }
 
-// function tryAggregate(
-//     bool requireSuccess,
-//     bytes[] calldata calls
-// ) external
-// payable
-// returns (MulticallResult[] memory result)
-// {
-
 ///
 /// decode the reason string to an Error
 ///
