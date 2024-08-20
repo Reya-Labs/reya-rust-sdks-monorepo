@@ -3,7 +3,9 @@ use crate::data_types::CoreProxy;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
+use crate::data_types::TryAggregateParams;
 use crate::data_types::PRICE_MULTIPLIER;
+use crate::http_provider::CoreProxy::MulticallResult;
 use alloy::{
     contract::Error,
     network::EthereumWallet,
@@ -571,6 +573,64 @@ impl HttpProvider {
             proxy.getInstantaneousPoolPrice(market_id).call().await?;
 
         eyre::Ok(_0)
+    }
+
+    pub async fn try_aggregate(
+        &self,
+        private_key: &String,
+        params: data_types::TryAggregateParams,
+    ) -> eyre::Result<B256> {
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+
+        let builder = proxy.tryAggregate(params.require_success, params.calls);
+
+        match builder.send().await {
+            Ok(transaction_result) => {
+                trace!("End Try Aggregate");
+                return eyre::Ok(transaction_result.tx_hash().clone());
+            }
+            Err(e) => match handle_rpc_error(e) {
+                Some(error_string) => {
+                    return Err(Report::msg(format!(
+                        "Try Aggregate transaction reverted {:?}",
+                        error_string
+                    )));
+                }
+                None => {
+                    return Err(Report::msg(format!("Try Aggregate transaction reverted")));
+                }
+            },
+        }
+    }
+
+    pub async fn try_aggregate_static_call(
+        &self,
+        sender_address: &String,
+        params: TryAggregateParams,
+    ) -> eyre::Result<Vec<MulticallResult>> {
+        // create http provider
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+
+        let CoreProxy::tryAggregateReturn { result } = proxy
+            .tryAggregate(params.require_success, params.calls)
+            .from(sender_address.parse().unwrap())
+            .call()
+            .await?;
+
+        eyre::Ok(result)
     }
 }
 
