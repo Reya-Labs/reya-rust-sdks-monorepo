@@ -2722,5 +2722,16 @@
     "type": "error",
     "name": "ZeroOrderSize",
     "inputs": []
-  }
+  },
+  {
+    "type": "error",
+    "name": "StalePriceDetected",
+    "inputs": [
+        {
+            "name": "nodeId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+        }
+    ]
+}
 ]
