@@ -747,7 +747,7 @@ impl HttpProvider {
         account_ids: &Vec<u128>,
         token_address: Address,
     ) -> eyre::Result<Vec<MarginInfo>> {
-        let mut node_margin_infos: Vec<MarginInfo> = Vec::new();
+        let mut token_margin_infos: Vec<MarginInfo> = Vec::new();
 
         for i in (0..account_ids.len()).step_by(batch_size) {
             let account_ids_batch =
@@ -774,7 +774,7 @@ impl HttpProvider {
                     for result in results {
                         let node_margin_info =
                             MarginInfo::abi_decode(&result.returnData, true).unwrap();
-                        node_margin_infos.push(node_margin_info);
+                        token_margin_infos.push(node_margin_info);
                     }
                 }
                 Err(err) => {
@@ -786,7 +786,7 @@ impl HttpProvider {
             }
         }
 
-        return eyre::Ok(node_margin_infos);
+        return eyre::Ok(token_margin_infos);
     }
 
     pub async fn trigger_auto_exchange_for_accounts_and_collaterals(
