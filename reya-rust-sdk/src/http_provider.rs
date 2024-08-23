@@ -772,14 +772,14 @@ impl HttpProvider {
             match multicall_results {
                 Ok(results) => {
                     for result in results {
-                        let node_margin_info =
+                        let token_margin_info =
                             MarginInfo::abi_decode(&result.returnData, true).unwrap();
-                        token_margin_infos.push(node_margin_info);
+                        token_margin_infos.push(token_margin_info);
                     }
                 }
                 Err(err) => {
                     return Err(Report::msg(format!(
-                        "Failed to get node margin info, error={:?}",
+                        "Failed to get token margin info, error={:?}",
                         err
                     )));
                 }
@@ -827,12 +827,13 @@ impl HttpProvider {
                 })
                 .await;
 
-            let batch_account_ids: Vec<u128> = batch_account_infos.iter().map(|x| x.0).collect();
             match transaction_hash {
                 Ok(tx_hash) => {
                     transaction_hashes.push(tx_hash);
                 }
                 Err(err) => {
+                    let batch_account_ids: Vec<u128> =
+                        batch_account_infos.iter().map(|x| x.0).collect();
                     return Err(Report::msg(format!(
                         "Failed to trigger AE for accounts {:?}, error={:?}",
                         batch_account_ids, err
