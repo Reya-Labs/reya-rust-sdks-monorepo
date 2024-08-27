@@ -1,5 +1,7 @@
 use crate::data_types;
 use crate::data_types::CoreProxy;
+use crate::data_types::CoreProxy::MarginInfo;
+use crate::data_types::CoreProxy::TriggerAutoExchangeInput;
 use crate::data_types::OrderGatewayProxy;
 use crate::data_types::PassivePerpInstrumentProxy;
 use crate::data_types::RpcErrors::RpcErrorsErrors;
@@ -17,6 +19,8 @@ use alloy::{
     sol_types::SolEvent,
     transports::RpcError,
 };
+use alloy_primitives::FixedBytes;
+use alloy_sol_types::SolCall;
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
 use eyre::{Report, WrapErr};
@@ -36,7 +40,7 @@ pub enum ReasonError {
     SignerNotAuthorized,
     StalePriceDetected,
     ZeroSlTpOrderSize,
-    UnknownError, // special error when the decoded error is not known
+    UnknownError,  // special error when the decoded error is not known
     DecodingError, // special error when the decoding of the error fails
 }
 
@@ -130,6 +134,13 @@ impl HttpProvider {
         HttpProvider {
             sdk_config: sdk_config.clone(),
         }
+    }
+
+    fn get_wallet_address(&self) -> Address {
+        let signer = PrivateKeySigner::from_str(&self.sdk_config.private_key)
+            .expect("should parse private key");
+
+        return signer.address();
     }
 
     /// CreateAccount, creates an account on the reya network and returns the transaction hash on success
@@ -442,13 +453,12 @@ impl HttpProvider {
     /// decoded message or an empty error if unable to decode.
     pub async fn trigger_auto_exchange(
         &self,
-        private_key: &String,
         params: data_types::TriggerAutoExchangeParams,
     ) -> eyre::Result<B256> // return the transaction receipt
     {
         trace!("Start Trigger Auto-exchange");
 
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -576,12 +586,8 @@ impl HttpProvider {
         eyre::Ok(_0)
     }
 
-    pub async fn try_aggregate(
-        &self,
-        private_key: &String,
-        params: data_types::TryAggregateParams,
-    ) -> eyre::Result<B256> {
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
+    async fn try_aggregate(&self, params: data_types::TryAggregateParams) -> eyre::Result<B256> {
+        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -613,9 +619,8 @@ impl HttpProvider {
         }
     }
 
-    pub async fn try_aggregate_static_call(
+    async fn try_aggregate_static_call(
         &self,
-        sender_address: &String,
         params: TryAggregateParams,
     ) -> eyre::Result<Vec<MulticallResult>> {
         // create http provider
@@ -627,11 +632,217 @@ impl HttpProvider {
 
         let CoreProxy::tryAggregateReturn { result } = proxy
             .tryAggregate(params.require_success, params.calls)
-            .from(sender_address.parse().unwrap())
+            .from(self.get_wallet_address())
             .call()
             .await?;
 
         eyre::Ok(result)
+    }
+
+    pub async fn get_accounts_max_quote_to_cover_in_auto_exchange(
+        &self,
+        batch_size: usize,
+        account_ids: &Vec<u128>,
+        quote_collateral: Address,
+    ) -> eyre::Result<Vec<U256>> {
+        let mut max_quote_to_cover_in_auto_exchange: Vec<U256> = Vec::new();
+
+        for i in (0..account_ids.len()).step_by(batch_size) {
+            let batch_account_ids =
+                account_ids[i..std::cmp::min(i + batch_size, account_ids.len())].to_vec();
+            let mut batch_calldata_array = Vec::new();
+            for account_id in batch_account_ids.clone() {
+                let data = CoreProxy::calculateMaxQuoteToCoverInAutoExchangeCall::new((
+                    account_id,
+                    quote_collateral,
+                ));
+                let calldata = alloy::hex::encode(
+                    CoreProxy::calculateMaxQuoteToCoverInAutoExchangeCall::abi_encode(&data),
+                );
+                batch_calldata_array.push(calldata.parse().unwrap());
+            }
+
+            let multicall_results = self
+                .try_aggregate_static_call(TryAggregateParams {
+                    require_success: true,
+                    calls: batch_calldata_array,
+                })
+                .await;
+
+            match multicall_results {
+                Ok(multicall_results) => {
+                    for i in 0..batch_account_ids.len() {
+                        let return_data = &multicall_results[i].returnData;
+                        if return_data.len() > 0 {
+                            let return_data_u256 = U256::abi_decode(return_data, true).unwrap();
+                            max_quote_to_cover_in_auto_exchange.push(return_data_u256);
+                        } else {
+                            max_quote_to_cover_in_auto_exchange.push(U256::from(0));
+                        }
+                    }
+                }
+                Err(err) => {
+                    return Err(Report::msg(format!(
+                        "Failed to get max quote to cover in auto exchange, error={:?}",
+                        err
+                    )));
+                }
+            }
+        }
+
+        return eyre::Ok(max_quote_to_cover_in_auto_exchange);
+    }
+
+    pub async fn get_node_margin_infos(
+        &self,
+        batch_size: usize,
+        account_ids: &Vec<u128>,
+        token_address: Address,
+    ) -> eyre::Result<Vec<MarginInfo>> {
+        let mut node_margin_infos: Vec<MarginInfo> = Vec::new();
+
+        for i in (0..account_ids.len()).step_by(batch_size) {
+            let account_ids_batch =
+                account_ids[i..std::cmp::min(i + batch_size, account_ids.len())].to_vec();
+
+            let mut batch_calldata_array = Vec::new();
+            for account_id in account_ids_batch {
+                let data =
+                    CoreProxy::getNodeMarginInfoCall::new((account_id, token_address.clone()));
+                let calldata =
+                    alloy::hex::encode(CoreProxy::getNodeMarginInfoCall::abi_encode(&data));
+                batch_calldata_array.push(calldata.parse().unwrap());
+            }
+
+            let multicall_results = self
+                .try_aggregate_static_call(TryAggregateParams {
+                    require_success: true,
+                    calls: batch_calldata_array,
+                })
+                .await;
+
+            match multicall_results {
+                Ok(results) => {
+                    for result in results {
+                        let node_margin_info =
+                            MarginInfo::abi_decode(&result.returnData, true).unwrap();
+                        node_margin_infos.push(node_margin_info);
+                    }
+                }
+                Err(err) => {
+                    return Err(Report::msg(format!(
+                        "Failed to get node margin info, error={:?}",
+                        err
+                    )));
+                }
+            }
+        }
+
+        return eyre::Ok(node_margin_infos);
+    }
+
+    pub async fn get_token_margin_infos(
+        &self,
+        batch_size: usize,
+        account_ids: &Vec<u128>,
+        token_address: Address,
+    ) -> eyre::Result<Vec<MarginInfo>> {
+        let mut token_margin_infos: Vec<MarginInfo> = Vec::new();
+
+        for i in (0..account_ids.len()).step_by(batch_size) {
+            let account_ids_batch =
+                account_ids[i..std::cmp::min(i + batch_size, account_ids.len())].to_vec();
+
+            let mut batch_calldata_array = Vec::new();
+            for account_id in account_ids_batch {
+                let data =
+                    CoreProxy::getTokenMarginInfoCall::new((account_id, token_address.clone()));
+                let calldata =
+                    alloy::hex::encode(CoreProxy::getTokenMarginInfoCall::abi_encode(&data));
+                batch_calldata_array.push(calldata.parse().unwrap());
+            }
+
+            let multicall_results = self
+                .try_aggregate_static_call(TryAggregateParams {
+                    require_success: true,
+                    calls: batch_calldata_array,
+                })
+                .await;
+
+            match multicall_results {
+                Ok(results) => {
+                    for result in results {
+                        let token_margin_info =
+                            MarginInfo::abi_decode(&result.returnData, true).unwrap();
+                        token_margin_infos.push(token_margin_info);
+                    }
+                }
+                Err(err) => {
+                    return Err(Report::msg(format!(
+                        "Failed to get token margin info, error={:?}",
+                        err
+                    )));
+                }
+            }
+        }
+
+        return eyre::Ok(token_margin_infos);
+    }
+
+    pub async fn trigger_auto_exchange_for_accounts_and_collaterals(
+        &self,
+        batch_size: usize,
+        liquidator_account_id: u128,
+        ae_account_infos: Vec<(u128, U256)>,
+        quote_collateral: Address,
+        out_collaterals: Vec<Address>,
+    ) -> eyre::Result<Vec<FixedBytes<32>>> {
+        let mut transaction_hashes: Vec<FixedBytes<32>> = Vec::new();
+        for i in (0..ae_account_infos.len()).step_by(batch_size) {
+            let batch_account_infos = &ae_account_infos
+                [i..std::cmp::min(i + batch_size, ae_account_infos.len())]
+                .to_vec();
+
+            let mut batch_calldata_array = Vec::new();
+            for account_info in batch_account_infos {
+                for out_collateral in out_collaterals.iter() {
+                    let params = TriggerAutoExchangeInput {
+                        accountId: account_info.0,
+                        liquidatorAccountId: liquidator_account_id,
+                        requestedQuoteAmount: account_info.1,
+                        collateral: out_collateral.clone(),
+                        inCollateral: quote_collateral,
+                    };
+                    let data = CoreProxy::triggerAutoExchangeCall::new((params,));
+                    let calldata =
+                        alloy::hex::encode(CoreProxy::triggerAutoExchangeCall::abi_encode(&data));
+                    batch_calldata_array.push(calldata.parse().unwrap());
+                }
+            }
+
+            let transaction_hash = self
+                .try_aggregate(TryAggregateParams {
+                    require_success: false,
+                    calls: batch_calldata_array,
+                })
+                .await;
+
+            match transaction_hash {
+                Ok(tx_hash) => {
+                    transaction_hashes.push(tx_hash);
+                }
+                Err(err) => {
+                    let batch_account_ids: Vec<u128> =
+                        batch_account_infos.iter().map(|x| x.0).collect();
+                    return Err(Report::msg(format!(
+                        "Failed to trigger AE for accounts {:?}, error={:?}",
+                        batch_account_ids, err
+                    )));
+                }
+            }
+        }
+
+        return eyre::Ok(transaction_hashes);
     }
 }
 
@@ -645,10 +856,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
         Ok(decoded_error) => match decoded_error {
             RpcErrorsErrors::AccountBelowIM(err) => {
                 error!("[Decoding reason] Reason error = {:?}", err);
-                return (
-                    String::from("AccountBelowIM"),
-                    ReasonError::AccountBelowIM,
-                );
+                return (String::from("AccountBelowIM"), ReasonError::AccountBelowIM);
             }
             RpcErrorsErrors::HigherExecutionPrice(err) => {
                 error!("[Decoding reason] Reason error = {:?}", err);
