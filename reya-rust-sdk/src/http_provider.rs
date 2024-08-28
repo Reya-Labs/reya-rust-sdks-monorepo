@@ -1,3 +1,4 @@
+use crate::config;
 use crate::data_types;
 use crate::data_types::Call;
 use crate::data_types::TryAggregateParams;
@@ -85,6 +86,7 @@ pub struct BatchExecuteOutput {
 #[derive(Debug)]
 pub struct HttpProvider {
     sdk_config: data_types::SdkConfig,
+    network_config: config::NetworkConfig,
 }
 
 /**
@@ -110,6 +112,7 @@ impl HttpProvider {
     pub fn new(sdk_config: &data_types::SdkConfig) -> HttpProvider {
         HttpProvider {
             sdk_config: sdk_config.clone(),
+            network_config: config::get_network_config(sdk_config.network_env.clone()),
         }
     }
 
@@ -159,12 +162,12 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         // core create account
         // todo: p1: use core proxy address (add to sdk config)
         let proxy = CoreProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
+            self.network_config.contract_addresses.orders_gateway.parse()?,
             provider,
         );
         let builder = proxy.createAccount(account_owner_address.clone());
@@ -244,10 +247,10 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         let proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
+            self.network_config.contract_addresses.orders_gateway.parse()?,
             provider.clone(),
         );
 
@@ -353,7 +356,7 @@ impl HttpProvider {
                 );
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
+            let counterparty_account_ids: Vec<u128> = vec![self.network_config.passive_pool_account_id];
 
             let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -381,7 +384,7 @@ impl HttpProvider {
             signatures
         );
 
-        let orders_gateway: Address = self.sdk_config.order_gateway_contract_address.parse()?;
+        let orders_gateway: Address = self.network_config.contract_addresses.orders_gateway.parse()?;
         let batch_execute_call = OrderGatewayProxy::batchExecuteCall { orders, signatures };
         let batch_execute_calldata = batch_execute_call.abi_encode();
 
@@ -413,7 +416,7 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         let mut tx = TransactionRequest {
             to: Some(TxKind::Call(target)),
@@ -456,7 +459,7 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         trace!(
             "Execution auto-exchange of account={:?}, collateral={:?}",
@@ -465,7 +468,7 @@ impl HttpProvider {
         );
 
         let proxy = CoreProxy::new(
-            self.sdk_config.core_proxy_address.parse()?,
+            self.network_config.contract_addresses.core.parse()?,
             provider.clone(),
         );
 
@@ -519,10 +522,10 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         // core create account
-        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+        let proxy = CoreProxy::new(self.network_config.contract_addresses.core.parse()?, provider);
 
         // Call the contract, retrieve the account owner information.
         let CoreProxy::getAccountOwnerReturn { _0 } =
@@ -537,7 +540,7 @@ impl HttpProvider {
     ) -> Option<rpc::types::TransactionReceipt> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         let transaction_receipt_result = provider.get_transaction_receipt(tx_hash).await;
 
@@ -563,10 +566,10 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
         let proxy = PassivePerpInstrumentProxy::new(
-            self.sdk_config.passiv_perp_instrument_address.parse()?,
+            self.network_config.contract_addresses.perp.parse()?,
             provider,
         );
 
@@ -585,9 +588,9 @@ impl HttpProvider {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
-        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+        let proxy = CoreProxy::new(self.network_config.contract_addresses.core.parse()?, provider);
 
         let builder = proxy.tryAggregate(params.require_success, params.calls);
 
@@ -617,9 +620,9 @@ impl HttpProvider {
         // create http provider
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
-            .on_http(self.sdk_config.rpc_url.clone());
+            .on_http(self.network_config.rpc_url.clone());
 
-        let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
+        let proxy = CoreProxy::new(self.network_config.contract_addresses.core.parse()?, provider);
 
         let CoreProxy::tryAggregateReturn { result } = proxy
             .tryAggregate(params.require_success, params.calls)

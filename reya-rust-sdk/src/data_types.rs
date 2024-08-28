@@ -4,47 +4,39 @@ use dotenv::dotenv;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::env;
-use url::Url;
 use serde::{Deserialize, Serialize};
 
-use crate::solidity::OrderGatewayProxy;
+use crate::{config::NetworkEnv, solidity::OrderGatewayProxy};
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
 
-///
-/// configuration struct for the sdk
-///
-#[derive(PartialEq, Eq, Clone, Debug)]
+// configuration struct for the sdk
+#[derive(Clone, Debug)]
 pub struct SdkConfig {
-    pub core_proxy_address: String,
-    pub order_gateway_contract_address: String,
-    pub passiv_perp_instrument_address: String,
-    pub oracle_adapters_contract_address: String,
+    pub network_env: NetworkEnv,
     pub stork_api_key: String,
     pub private_key: String,
-    pub rpc_url: Url,
-    pub counter_party_id: u128,
 }
 
 pub fn load_enviroment_config() -> SdkConfig {
     dotenv().ok();
 
-    let core_proxy_address = env::var("CORE_PROXY_ADDRESS")
-        .expect("Core proxy address must be set as environment variable")
-        .to_lowercase();
+    let network = u128::from_str_radix(
+        env::var("NETWORK")
+            .expect("Network must be set as environment variable")
+            .as_str(),
+        10,
+    ).expect("Network is incorrectly set as environment variable. It must be 1729 or 89346162");
 
-    let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
-        .expect("Order gateway contract address must be set as environment variable")
-        .to_lowercase();
-
-    let passiv_perp_instrument_address = env::var("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
-        .expect("Passive perp instrument address must be set as environment variable")
-        .to_lowercase();
-
-    let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
-        .expect("Oracle adapters contract address must be set as environment variable")
-        .to_lowercase();
+    let network_env: NetworkEnv;    
+    if network == 1729 {
+        network_env = NetworkEnv::Mainnet;
+    } else if network == 89346162 {
+        network_env = NetworkEnv::Testnet;
+    } else {
+        panic!("Network is incorrectly set as environment variable. It must be 1729 or 89346162");
+    }
 
     let private_key = env::var("PRIVATE_KEY")
         .expect("Private key must be set as environment variable")
@@ -54,41 +46,16 @@ pub fn load_enviroment_config() -> SdkConfig {
         .expect("Stork api key must be set as environment variable")
         .to_lowercase();
 
-    let rpc_url = Url::parse(
-        env::var("RPC_URL")
-            .expect("RPC Url must be set as environment variable")
-            .to_lowercase()
-            .as_str(),
-    );
-
-    let counter_party_id = u128::from_str_radix(
-        env::var("COUNTER_PARTY_ID")
-            .expect("Counter party id 2 or 4 and must be set as environment variable")
-            .as_str(),
-        10,
-    );
-
     let sdk_config = SdkConfig {
-        core_proxy_address,
-        order_gateway_contract_address,
-        passiv_perp_instrument_address,
-        oracle_adapters_contract_address,
         stork_api_key,
         private_key,
-        rpc_url: rpc_url.unwrap(),
-        counter_party_id: counter_party_id.unwrap(),
+        network_env,
     };
 
     return sdk_config;
 }
 
 #[allow(dead_code)]
-
-// exchanges
-pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
-
-// multicall3 contract address
-pub const MULTICALL_ADDRESS: &str = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
 // call object for multicall
 #[derive(Debug, Serialize, Deserialize)]

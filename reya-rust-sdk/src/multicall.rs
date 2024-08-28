@@ -1,6 +1,5 @@
 use crate::{
-    data_types::{load_enviroment_config, Call, StorkSignedPayload, MULTICALL_ADDRESS},
-    solidity::{Multicall3, OracleAdaptersProxy},
+    config::get_network_config, data_types::{load_enviroment_config, Call, StorkSignedPayload}, solidity::{Multicall3, OracleAdaptersProxy}
 };
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::{SolCall, SolValue};
@@ -23,18 +22,20 @@ fn encode_multicall(require_success: bool, calls: Vec<Call>) -> Vec<u8> {
 
 pub fn encode_strict_multicall(calls: Vec<Call>) -> Call {
     let calldata = encode_multicall(true, calls);
+    let multicall = get_network_config(load_enviroment_config().network_env).contract_addresses.multicall3;
 
     return Call {
-        target: MULTICALL_ADDRESS.parse().unwrap(),
+        target: Address::from_str(multicall.as_str()).unwrap(),
         calldata,
     };
 }
 
 pub fn encode_optional_multicall(calls: Vec<Call>) -> Call {
     let calldata = encode_multicall(false, calls);
+    let multicall = get_network_config(load_enviroment_config().network_env).contract_addresses.multicall3;
 
     return Call {
-        target: MULTICALL_ADDRESS.parse().unwrap(),
+        target: Address::from_str(multicall.as_str()).unwrap(),
         calldata,
     };
 }
@@ -70,8 +71,7 @@ fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) 
 }
 
 fn multicall_oracle_append(stork_prices: &Vec<StorkSignedPayload>) -> Vec<Call> {
-    let oracle_adapters_contract_address =
-        load_enviroment_config().oracle_adapters_contract_address;
+    let oracle_adapters_contract_address = get_network_config(load_enviroment_config().network_env).contract_addresses.oracle_adapters;
 
     return stork_prices
         .iter()

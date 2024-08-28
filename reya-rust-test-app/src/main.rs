@@ -4,6 +4,7 @@ use clap::*;
 use core::result::Result::Ok;
 use dotenv::dotenv;
 use reya_rust_sdk::{
+    config::{self, NetworkConfig},
     data_types,
     http_provider::{self, extract_execute_batch_outputs},
 };
@@ -195,6 +196,8 @@ async fn main() -> eyre::Result<()> {
         let p0 = String::from(packages[0]); // market_id
 
         let sdk_config = data_types::load_enviroment_config();
+        let network_config: NetworkConfig =
+            config::get_network_config(sdk_config.network_env.clone());
         let http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
@@ -202,7 +205,7 @@ async fn main() -> eyre::Result<()> {
         let market_id: u128 = p0.parse().unwrap(); // 1=eth/rUSD, 2=btc/rUSD (instrument symbol)
         println!(
             "calling get pool price {} {}",
-            sdk_config.rpc_url, market_id
+            network_config.rpc_url, market_id
         );
         get_pool_price(market_id, &http_provider).await;
     } else if matches.contains_id("get-execute-batch-receipt-outputs") {
@@ -214,11 +217,13 @@ async fn main() -> eyre::Result<()> {
             .collect();
 
         let sdk_config = data_types::load_enviroment_config();
+        let network_config: NetworkConfig =
+            config::get_network_config(sdk_config.network_env.clone());
         let http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
         let batch_execute_hash = String::from(packages[0]); // batch_execute_hash
-        debug!("Get log{} {}", sdk_config.rpc_url, batch_execute_hash);
+        debug!("Get log{} {}", network_config.rpc_url, batch_execute_hash);
         get_execute_batch_receipt_logs(batch_execute_hash, &http_provider).await;
     } else
     // handle batche execute request
@@ -233,6 +238,9 @@ async fn main() -> eyre::Result<()> {
         let p1 = String::from(packages[0]); // batch_order.json
 
         let sdk_config = data_types::load_enviroment_config();
+        let network_config: NetworkConfig =
+            config::get_network_config(sdk_config.network_env.clone());
+
         let _http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
@@ -241,7 +249,7 @@ async fn main() -> eyre::Result<()> {
 
         println!(
             "Execute batch order:{} {}",
-            sdk_config.rpc_url, batch_order_json_file
+            network_config.rpc_url, batch_order_json_file
         );
 
         let data = fs::read_to_string(batch_order_json_file) //
@@ -285,12 +293,14 @@ async fn main() -> eyre::Result<()> {
         //let packages: Vec<_> = matches.get_many::<String>("create-account").collect();
 
         let sdk_config = data_types::load_enviroment_config();
+        let network_config: NetworkConfig =
+            config::get_network_config(sdk_config.network_env.clone());
         let http_provider: http_provider::HttpProvider =
             http_provider::HttpProvider::new(&sdk_config);
 
         println!(
             "Create account:{:?} {:?}",
-            sdk_config.rpc_url, sdk_config.private_key
+            network_config.rpc_url, sdk_config.private_key
         );
 
         create_account(&sdk_config.private_key, &http_provider).await;
