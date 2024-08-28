@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use alloy_sol_types::{SolCall, SolValue};
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, U256};
 use crate::data_types::{Call, Multicall3, OracleAdaptersProxy, StorkSignedPayload, MULTICALL_ADDRESS, load_enviroment_config};
 
 fn encode_multicall(require_success: bool, calls: Vec<Call>) -> Vec<u8> {
@@ -44,11 +44,11 @@ pub fn multicall_oracle_prepend(call: Call, stork_prices: &Vec<StorkSignedPayloa
 fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) -> Vec<u8> {
     let oracle_pub_key = signed_price_payload.oraclePubKey;
     let asset_pair_id = signed_price_payload.pricePayload.assetPairId.clone();
-    let timestamp = signed_price_payload.pricePayload.timestamp;
+    let timestamp = signed_price_payload.pricePayload.timestamp.div_rem(U256::from(1e9)).0;
     let price = signed_price_payload.pricePayload.price;
     let r = signed_price_payload.r;
     let s = signed_price_payload.s;
-    let v: Bytes = signed_price_payload.v.to_string().parse().unwrap();
+    let v: U256 = signed_price_payload.v.to_string().parse().unwrap();
 
     let signed_offchain_data = (oracle_pub_key, (asset_pair_id, timestamp, price), r, s, v).abi_encode();
 
