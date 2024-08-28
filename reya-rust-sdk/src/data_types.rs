@@ -1,16 +1,17 @@
-use alloy::primitives::Address;
-use alloy::primitives::I256;
-use alloy::primitives::U256;
-use alloy::sol;
+use alloy::primitives::{Address, I256, U256};
 use alloy_primitives::Bytes;
 use dotenv::dotenv;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::env;
 use url::Url;
+use serde::{Deserialize, Serialize};
+
+use crate::solidity::OrderGatewayProxy;
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
+
 ///
 /// configuration struct for the sdk
 ///
@@ -19,6 +20,8 @@ pub struct SdkConfig {
     pub core_proxy_address: String,
     pub order_gateway_contract_address: String,
     pub passiv_perp_instrument_address: String,
+    pub oracle_adapters_contract_address: String,
+    pub stork_api_key: String,
     pub private_key: String,
     pub rpc_url: Url,
     pub counter_party_id: u128,
@@ -39,8 +42,16 @@ pub fn load_enviroment_config() -> SdkConfig {
         .expect("Passive perp instrument address must be set as environment variable")
         .to_lowercase();
 
+    let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
+        .expect("Oracle adapters contract address must be set as environment variable")
+        .to_lowercase();
+
     let private_key = env::var("PRIVATE_KEY")
         .expect("Private key must be set as environment variable")
+        .to_lowercase();
+
+    let stork_api_key = env::var("STORK_API_KEY")
+        .expect("Stork api key must be set as environment variable")
         .to_lowercase();
 
     let rpc_url = Url::parse(
@@ -58,13 +69,16 @@ pub fn load_enviroment_config() -> SdkConfig {
     );
 
     let sdk_config = SdkConfig {
-        core_proxy_address: core_proxy_address,
-        order_gateway_contract_address: order_gateway_contract_address,
-        passiv_perp_instrument_address: passiv_perp_instrument_address,
-        private_key: private_key,
+        core_proxy_address,
+        order_gateway_contract_address,
+        passiv_perp_instrument_address,
+        oracle_adapters_contract_address,
+        stork_api_key,
+        private_key,
         rpc_url: rpc_url.unwrap(),
         counter_party_id: counter_party_id.unwrap(),
     };
+
     return sdk_config;
 }
 
@@ -73,41 +87,15 @@ pub fn load_enviroment_config() -> SdkConfig {
 // exchanges
 pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
 
-// Codegen from ABI file to interact with the reya order gateway proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    OrderGatewayProxy,
-    "./transactions/abi/OrderGatewayProxy.json"
-);
+// multicall3 contract address
+pub const MULTICALL_ADDRESS: &str = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
-// Codegen from ABI file to interact with the reya passive perp instrument proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    PassivePerpInstrumentProxy,
-    "./transactions/abi/PassivePerpInstrumentProxy.json"
-);
-
-// Codegen from ABI file to interact with the reya core proxy contract
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    CoreProxy,
-    "./transactions/abi/CoreProxy.json"
-);
-
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    // collection of all rcp errors from Core, PassivePerp and OrderGateway
-    RpcErrors,
-    "./transactions/abi/Errors.json"
-);
+// call object for multicall
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Call {
+    pub target: Address,
+    pub calldata: Vec<u8>,
+}
 
 #[allow(dead_code)]
 #[repr(u8)]
@@ -187,5 +175,9 @@ pub struct TriggerAutoExchangeParams {
 #[derive(Debug)]
 pub struct TryAggregateParams {
     pub require_success: bool,
-    pub calls: Vec<Bytes>,
+    pub calls: Vec<Bytes>
 }
+
+pub type StorkSignedPayload = OrderGatewayProxy::StorkSignedPayload;
+pub type StorkPricePayload = OrderGatewayProxy::StorkPricePayload;
+pub type EIP712Signature = OrderGatewayProxy::EIP712Signature;

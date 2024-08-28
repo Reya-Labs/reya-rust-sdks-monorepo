@@ -475,5 +475,62 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StorkSignedPayloadDataType",
+    "inputs": [
+      {
+        "name": "payload",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct StorkSignedPayload",
+        "components": [
+          {
+            "name": "oraclePubKey",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pricePayload",
+            "type": "tuple",
+            "internalType": "struct StorkPricePayload",
+            "components": [
+              {
+                "name": "assetPairId",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "timestamp",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "price",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "r",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "s",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "v",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
   }
 ]

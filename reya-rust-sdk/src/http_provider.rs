@@ -1,13 +1,16 @@
 use crate::data_types;
-use crate::data_types::CoreProxy;
-use crate::data_types::CoreProxy::MarginInfo;
-use crate::data_types::CoreProxy::TriggerAutoExchangeInput;
-use crate::data_types::OrderGatewayProxy;
-use crate::data_types::PassivePerpInstrumentProxy;
-use crate::data_types::RpcErrors::RpcErrorsErrors;
+use crate::data_types::Call;
 use crate::data_types::TryAggregateParams;
 use crate::data_types::PRICE_MULTIPLIER;
-use crate::http_provider::CoreProxy::MulticallResult;
+use crate::multicall::multicall_oracle_prepend;
+use crate::solidity::{
+    BatchExecuteInputBytes, CoreProxy,
+    CoreProxy::{MarginInfo, MulticallResult, TriggerAutoExchangeInput},
+    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy,
+    RpcErrors::RpcErrorsErrors,
+};
+use alloy::rpc::types::TransactionInput;
+use alloy::rpc::types::TransactionRequest;
 use alloy::{
     contract::Error,
     network::EthereumWallet,
@@ -15,11 +18,11 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     rpc, // used for TransactionReceipt
     signers::local::PrivateKeySigner,
-    sol,
     sol_types::SolEvent,
     transports::RpcError,
 };
 use alloy_primitives::FixedBytes;
+use alloy_primitives::TxKind;
 use alloy_sol_types::SolCall;
 use alloy_sol_types::{SolInterface, SolValue};
 use eyre;
@@ -76,32 +79,6 @@ pub struct BatchExecuteOutput {
     pub reason_error: Option<ReasonError>,
 }
 
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    rUSDProxy,
-    "./transactions/abi/rUsdProxy.json"
-);
-
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    /// batch execution input bytes structure definition
-    struct BatchExecuteInputBytes
-    {
-        bool is_long;
-        uint256 trigger_price;  // stop_price!
-        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-    }
-
-    struct ExecuteInputBytes
-    {
-        int256 order_base;  // price!
-        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-    }
-);
 /**
  * HTTP Provider
  */
@@ -301,50 +278,15 @@ impl HttpProvider {
     /// Incase transaction hash is return it does not mean all orders in the batch are successfully executed, these
     ///
     /// details are provided in the batch orders vector with the flag is_executed_successfully = true.
-    ///
-    /// Needs the following parameters:
-    ///
-    /// 1: signer,
-    ///
-    /// 2: batch_orders, vector with number of order to execute
-    ///
-    /// # Examples
-    /// '''
-    /// use crate::reya_network::http_provider;
-    ///
-    /// use alloy::{
-    ///    primitives::{I256, U256},
-    ///
-    ///    signers::wallet::PrivateKeySigner,
-    /// };
-    ///
-    /// let account_owner_address = address!("e7f6b70a36f4399e0853a311dc6699aba7343cc6");
-    ///
-    /// let private_key:String=<your private key>;
-    ///
-    /// let mut batch_orders:Vec<data_types::BatchOrder> = make_batch();
-    ///
-    /// let transaction_hash = http_provider.execute_batch(private_key, batch_orders).await;
-    ///
-    /// '''
-    ///
 
     pub async fn execute_batch(
         &self,
         private_key: &String,
         batch_orders: &Vec<data_types::BatchOrder>,
+        stork_prices: &Vec<data_types::StorkSignedPayload>,
     ) -> eyre::Result<B256> // return the transaction hash
     {
-        trace!("Start Execute batch");
-
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
-        let wallet = EthereumWallet::from(signer);
-
-        // create http provider
-        let provider = ProviderBuilder::new()
-            .with_recommended_fillers()
-            .wallet(wallet)
-            .on_http(self.sdk_config.rpc_url.clone());
+        trace!("[Execute CO batch] Start");
 
         let mut orders: Vec<OrderGatewayProxy::ConditionalOrderDetails> = vec![];
         let mut signatures: Vec<OrderGatewayProxy::EIP712Signature> = vec![];
@@ -353,7 +295,10 @@ impl HttpProvider {
         for i in 0..batch_orders.len() {
             let batch_order: &data_types::BatchOrder = &batch_orders[i];
 
-            trace!("Executing batch order:{:?}", batch_order);
+            trace!(
+                "[Execute CO batch] Processing order batch: {:?}",
+                batch_order
+            );
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
             let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
@@ -381,11 +326,12 @@ impl HttpProvider {
 
                 encoded_input_bytes = batch_execute_input_bytes.abi_encode_sequence();
 
-                trace!("SL/TP Encoding is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}", //
-                batch_order.is_long, //
-                trigger_price, //
-                batch_order.price_limit, //
-                encoded_input_bytes);
+                trace!("[Execute CO batch] SL/TP Encoding: is_long={:?}, trigger price={:?}, price limit={:?}, encoded inputs={:?}",
+                    batch_order.is_long,
+                    trigger_price,
+                    batch_order.price_limit,
+                    encoded_input_bytes
+                );
             } else if batch_order.order_type == data_types::OrderType::Limit {
                 let order_base: I256 = (batch_order.order_base * PRICE_MULTIPLIER)
                     .trunc()
@@ -399,11 +345,12 @@ impl HttpProvider {
                 };
                 encoded_input_bytes = execute_input_bytes.abi_encode_sequence();
 
-                trace!("LO Encoding is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
-                batch_order.is_long, //
-                trigger_price, //
-                order_base, //
-                encoded_input_bytes);
+                trace!("[Execute CO batch] LO Encoding: is_long={:?}, trigger_price={:?}, order_base={:?}, encoded_inputs={:?}", //
+                    batch_order.is_long, //
+                    trigger_price, //
+                    order_base, //
+                    encoded_input_bytes
+                );
             }
 
             let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
@@ -418,31 +365,75 @@ impl HttpProvider {
                 signer: batch_order.signer_address,
                 nonce: batch_order.order_nonce,
             };
-            trace!("Conditional order details={:?}", conditional_order_details);
+
+            trace!(
+                "[Execute CO batch] Conditional order details: {:?}",
+                conditional_order_details
+            );
 
             orders.push(conditional_order_details);
-
             signatures.push(batch_order.eip712_signature.clone());
         }
 
         trace!(
-            "Execution batch orders={:?}, signatures={:?}",
+            "[Execute CO batch] Submitting order batch: orders={:?}, signatures={:?}",
             orders,
             signatures
         );
 
-        let proxy = OrderGatewayProxy::new(
-            self.sdk_config.order_gateway_contract_address.parse()?,
-            provider.clone(),
+        let orders_gateway: Address = self.sdk_config.order_gateway_contract_address.parse()?;
+        let batch_execute_call = OrderGatewayProxy::batchExecuteCall { orders, signatures };
+        let batch_execute_calldata = batch_execute_call.abi_encode();
+
+        let call = multicall_oracle_prepend(
+            Call {
+                target: orders_gateway,
+                calldata: batch_execute_calldata,
+            },
+            stork_prices,
         );
 
-        let builder = proxy.batchExecute(orders, signatures);
-        let new_gas_limit = (builder.estimate_gas().await? * 12u128) / 10u128;
-        let b2 = builder.gas(new_gas_limit);
+        trace!("[Execute CO batch] Calling raw tx");
+        return self
+            .execute_tx(private_key, call.target, call.calldata)
+            .await;
+    }
 
-        let transaction_result = b2.send().await?;
+    pub async fn execute_tx(
+        &self,
+        private_key: &String,
+        target: Address,
+        calldata: Vec<u8>,
+    ) -> eyre::Result<B256> {
+        trace!("[Executing raw tx] Start");
 
-        trace!("End Execute batch");
+        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let mut tx = TransactionRequest {
+            to: Some(TxKind::Call(target)),
+            input: TransactionInput {
+                data: None,
+                input: Some(Bytes::from(calldata)),
+            },
+            ..Default::default()
+        };
+
+        trace!("[Executing raw tx] Getting gas limit");
+
+        let gas_limit = (provider.estimate_gas(&tx).await? * 12u128) / 10u128;
+        tx = tx.gas_limit(gas_limit);
+
+        trace!("[Executing raw tx] Sending transaction");
+
+        let transaction_result = provider.send_transaction(tx.clone()).await?;
+
+        trace!("[Executing raw tx] Finish");
 
         eyre::Ok(transaction_result.tx_hash().clone())
     }
