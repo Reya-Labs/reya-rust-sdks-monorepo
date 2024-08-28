@@ -1,15 +1,14 @@
 use crate::data_types;
 use crate::data_types::Call;
-use crate::data_types::CoreProxy;
-use crate::data_types::CoreProxy::MarginInfo;
-use crate::data_types::CoreProxy::TriggerAutoExchangeInput;
-use crate::data_types::OrderGatewayProxy;
-use crate::data_types::PassivePerpInstrumentProxy;
-use crate::data_types::RpcErrors::RpcErrorsErrors;
 use crate::data_types::TryAggregateParams;
 use crate::data_types::PRICE_MULTIPLIER;
-use crate::http_provider::CoreProxy::MulticallResult;
 use crate::multicall::multicall_oracle_prepend;
+use crate::solidity::{
+    BatchExecuteInputBytes, CoreProxy,
+    CoreProxy::{MarginInfo, MulticallResult, TriggerAutoExchangeInput},
+    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy,
+    RpcErrors::RpcErrorsErrors,
+};
 use alloy::rpc::types::TransactionInput;
 use alloy::rpc::types::TransactionRequest;
 use alloy::{
@@ -19,7 +18,6 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     rpc, // used for TransactionReceipt
     signers::local::PrivateKeySigner,
-    sol,
     sol_types::SolEvent,
     transports::RpcError,
 };
@@ -81,32 +79,6 @@ pub struct BatchExecuteOutput {
     pub reason_error: Option<ReasonError>,
 }
 
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    rUSDProxy,
-    "./transactions/abi/rUsdProxy.json"
-);
-
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    /// batch execution input bytes structure definition
-    struct BatchExecuteInputBytes
-    {
-        bool is_long;
-        uint256 trigger_price;  // stop_price!
-        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-    }
-
-    struct ExecuteInputBytes
-    {
-        int256 order_base;  // price!
-        uint256 price_limit;    // price limit is the slippage tolerance,we can set it to max uint or zero for now depending on the direction of the trade
-    }
-);
 /**
  * HTTP Provider
  */
@@ -323,7 +295,10 @@ impl HttpProvider {
         for i in 0..batch_orders.len() {
             let batch_order: &data_types::BatchOrder = &batch_orders[i];
 
-            trace!("[Execute CO batch] Processing order batch: {:?}", batch_order);
+            trace!(
+                "[Execute CO batch] Processing order batch: {:?}",
+                batch_order
+            );
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
             let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
@@ -357,7 +332,6 @@ impl HttpProvider {
                     batch_order.price_limit,
                     encoded_input_bytes
                 );
-
             } else if batch_order.order_type == data_types::OrderType::Limit {
                 let order_base: I256 = (batch_order.order_base * PRICE_MULTIPLIER)
                     .trunc()
@@ -392,7 +366,10 @@ impl HttpProvider {
                 nonce: batch_order.order_nonce,
             };
 
-            trace!("[Execute CO batch] Conditional order details: {:?}", conditional_order_details);
+            trace!(
+                "[Execute CO batch] Conditional order details: {:?}",
+                conditional_order_details
+            );
 
             orders.push(conditional_order_details);
             signatures.push(batch_order.eip712_signature.clone());
@@ -408,16 +385,26 @@ impl HttpProvider {
         let batch_execute_call = OrderGatewayProxy::batchExecuteCall { orders, signatures };
         let batch_execute_calldata = batch_execute_call.abi_encode();
 
-        let call = multicall_oracle_prepend(Call {
-            target: orders_gateway,
-            calldata: batch_execute_calldata,
-        }, stork_prices);
+        let call = multicall_oracle_prepend(
+            Call {
+                target: orders_gateway,
+                calldata: batch_execute_calldata,
+            },
+            stork_prices,
+        );
 
         trace!("[Execute CO batch] Calling raw tx");
-        return self.execute_tx(private_key, call.target, call.calldata).await;
+        return self
+            .execute_tx(private_key, call.target, call.calldata)
+            .await;
     }
 
-    pub async fn execute_tx(&self, private_key: &String, target: Address, calldata: Vec<u8>) -> eyre::Result<B256> {
+    pub async fn execute_tx(
+        &self,
+        private_key: &String,
+        target: Address,
+        calldata: Vec<u8>,
+    ) -> eyre::Result<B256> {
         trace!("[Executing raw tx] Start");
 
         let signer: PrivateKeySigner = private_key.parse().unwrap();
@@ -432,7 +419,7 @@ impl HttpProvider {
             to: Some(TxKind::Call(target)),
             input: TransactionInput {
                 data: None,
-                input: Some(Bytes::from(calldata))
+                input: Some(Bytes::from(calldata)),
             },
             ..Default::default()
         };
@@ -445,7 +432,7 @@ impl HttpProvider {
         trace!("[Executing raw tx] Sending transaction");
 
         let transaction_result = provider.send_transaction(tx.clone()).await?;
-        
+
         trace!("[Executing raw tx] Finish");
 
         eyre::Ok(transaction_result.tx_hash().clone())

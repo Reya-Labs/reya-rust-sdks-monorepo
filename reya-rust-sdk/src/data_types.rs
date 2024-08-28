@@ -1,5 +1,4 @@
 use alloy::primitives::{Address, I256, U256};
-use alloy::sol;
 use alloy_primitives::Bytes;
 use dotenv::dotenv;
 use rust_decimal::Decimal;
@@ -7,6 +6,8 @@ use rust_decimal_macros::dec;
 use std::env;
 use url::Url;
 use serde::{Deserialize, Serialize};
+
+use crate::solidity::OrderGatewayProxy;
 
 pub const PRICE_MULTIPLIER: Decimal = dec!(1_000_000_000_000_000_000);
 pub const WAD_MULTIPLIER: f64 = 1000000000000000000.0;
@@ -96,60 +97,6 @@ pub struct Call {
     pub calldata: Vec<u8>,
 }
 
-// Codegen from ABI file to interact with the reya order gateway proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    OrderGatewayProxy,
-    "./transactions/abi/OrderGatewayProxy.json"
-);
-
-// Codegen from ABI file to interact with the reya passive perp instrument proxy contract.
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    PassivePerpInstrumentProxy,
-    "./transactions/abi/PassivePerpInstrumentProxy.json"
-);
-
-// Codegen from ABI file to interact with the reya core proxy contract
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    CoreProxy,
-    "./transactions/abi/CoreProxy.json"
-);
-
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    // collection of all rcp errors from Core, PassivePerp and OrderGateway
-    RpcErrors,
-    "./transactions/abi/Errors.json"
-);
-
-// Codegen from ABI file to interact with the multicall3 contract
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    Multicall3,
-    "./transactions/abi/Multicall3.json"
-);
-
-// Codegen from ABI file to interact with the oracle adapters contract
-sol!(
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug)]
-    OracleAdaptersProxy,
-    "./transactions/abi/OracleAdaptersProxy.json"
-);
-
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug)]
@@ -233,3 +180,4 @@ pub struct TryAggregateParams {
 
 pub type StorkSignedPayload = OrderGatewayProxy::StorkSignedPayload;
 pub type StorkPricePayload = OrderGatewayProxy::StorkPricePayload;
+pub type EIP712Signature = OrderGatewayProxy::EIP712Signature;
