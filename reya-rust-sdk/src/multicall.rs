@@ -42,13 +42,13 @@ pub fn multicall_oracle_prepend(call: Call, stork_prices: &Vec<StorkSignedPayloa
 }
 
 fn encode_stork_fulfill_oracle_query(signed_price_payload: &StorkSignedPayload) -> Vec<u8> {
-    let oracle_pub_key = signed_price_payload.oracle_pub_key;
-    let asset_pair_id = signed_price_payload.price_payload.asset_pair_id.clone();
-    let timestamp = signed_price_payload.price_payload.timestamp;
-    let price = signed_price_payload.price_payload.price;
-    let r: [u8; 32] = signed_price_payload.r;
-    let s: [u8; 32] = signed_price_payload.s;
-    let v: [u8; 1] = signed_price_payload.v;
+    let oracle_pub_key = signed_price_payload.oraclePubKey;
+    let asset_pair_id = signed_price_payload.pricePayload.assetPairId.clone();
+    let timestamp = signed_price_payload.pricePayload.timestamp;
+    let price = signed_price_payload.pricePayload.price;
+    let r = signed_price_payload.r;
+    let s = signed_price_payload.s;
+    let v: Bytes = signed_price_payload.v.to_string().parse().unwrap();
 
     let signed_offchain_data = (oracle_pub_key, (asset_pair_id, timestamp, price), r, s, v).abi_encode();
 

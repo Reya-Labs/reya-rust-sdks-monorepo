@@ -231,18 +231,5 @@ pub struct TryAggregateParams {
     pub calls: Vec<Bytes>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StorkSignedPayload {
-    pub oracle_pub_key: Address,
-    pub price_payload: StorkPricePayload,
-    pub r: [u8; 32],
-    pub s: [u8; 32],
-    pub v: [u8; 1],
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StorkPricePayload {
-    pub asset_pair_id: String, 
-    pub timestamp: U256,
-    pub price: U256,
-}
+pub type StorkSignedPayload = OrderGatewayProxy::StorkSignedPayload;
+pub type StorkPricePayload = OrderGatewayProxy::StorkPricePayload;
