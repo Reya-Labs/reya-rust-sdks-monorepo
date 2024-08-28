@@ -18,6 +18,7 @@ pub struct ContractAddresses {
 #[derive(Clone, Debug)]
 pub struct NetworkConfig {
     pub rpc_url: Url,
+    pub api_base_url: Url,
     pub contract_addresses: ContractAddresses,
     pub passive_pool_account_id: u128, // counter party account id (mainnet: 2, testnet: 4)
     pub exchange_id: u128,
@@ -28,6 +29,7 @@ pub fn get_network_config(network_env: NetworkEnv) -> NetworkConfig {
         NetworkEnv::Mainnet => {
             return NetworkConfig {
                 rpc_url: Url::parse("https://rpc.reya.network").unwrap(),
+                api_base_url: Url::parse("https://api.reya.xyz/api/").unwrap(),
                 contract_addresses: ContractAddresses {
                     core: "0xA763B6a5E09378434406C003daE6487FbbDc1a80".to_string(),
                     orders_gateway: "0xfc8c96bE87Da63CeCddBf54abFA7B13ee8044739".to_string(),
@@ -42,6 +44,7 @@ pub fn get_network_config(network_env: NetworkEnv) -> NetworkConfig {
         NetworkEnv::Testnet => {
             return NetworkConfig {
                 rpc_url: Url::parse("https://rpc.reya-cronos.gelato.digital").unwrap(),
+                api_base_url: Url::parse("https://m8mjgmqmte.eu-central-1.awsapprunner.com/api/").unwrap(),
                 contract_addresses: ContractAddresses {
                     core: "0xC6fB022962e1426F4e0ec9D2F8861c57926E9f72".to_string(),
                     orders_gateway: "0x5A0aC2f89E0BDeaFC5C549e354842210A3e87CA5".to_string(),
