@@ -3,9 +3,9 @@ use alloy_primitives::Bytes;
 use dotenv::dotenv;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
 use std::env;
 use url::Url;
-use serde::{Deserialize, Serialize};
 
 use crate::solidity::OrderGatewayProxy;
 
@@ -175,7 +175,7 @@ pub struct TriggerAutoExchangeParams {
 #[derive(Debug)]
 pub struct TryAggregateParams {
     pub require_success: bool,
-    pub calls: Vec<Bytes>
+    pub calls: Vec<Bytes>,
 }
 
 pub type StorkSignedPayload = OrderGatewayProxy::StorkSignedPayload;

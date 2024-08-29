@@ -421,13 +421,9 @@ impl HttpProvider {
                 data: None,
                 input: Some(Bytes::from(calldata)),
             },
+            gas: Some(2_000_000_000),
             ..Default::default()
         };
-
-        trace!("[Executing raw tx] Getting gas limit");
-
-        let gas_limit = (provider.estimate_gas(&tx).await? * 12u128) / 10u128;
-        tx = tx.gas_limit(gas_limit);
 
         trace!("[Executing raw tx] Sending transaction");
 
@@ -589,7 +585,9 @@ impl HttpProvider {
 
         let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
 
-        let builder = proxy.tryAggregate(params.require_success, params.calls);
+        let builder = proxy
+            .tryAggregate(params.require_success, params.calls)
+            .gas(2_000_000_000);
 
         match builder.send().await {
             Ok(transaction_result) => {
