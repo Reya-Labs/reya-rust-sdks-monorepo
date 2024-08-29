@@ -436,11 +436,9 @@ impl HttpProvider {
             provider.clone(),
         );
 
-        let builder = proxy.batchExecute(orders, signatures);
-        let new_gas_limit = (builder.estimate_gas().await? * 12u128) / 10u128;
-        let b2 = builder.gas(new_gas_limit);
+        let builder = proxy.batchExecute(orders, signatures).gas(2_000_000_000);
 
-        let transaction_result = b2.send().await?;
+        let transaction_result = builder.send().await?;
 
         trace!("End Execute batch");
 
@@ -598,7 +596,9 @@ impl HttpProvider {
 
         let proxy = CoreProxy::new(self.sdk_config.core_proxy_address.parse()?, provider);
 
-        let builder = proxy.tryAggregate(params.require_success, params.calls);
+        let builder = proxy
+            .tryAggregate(params.require_success, params.calls)
+            .gas(2_000_000_000);
 
         match builder.send().await {
             Ok(transaction_result) => {
