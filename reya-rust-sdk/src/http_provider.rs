@@ -421,12 +421,9 @@ impl HttpProvider {
                 data: None,
                 input: Some(Bytes::from(calldata)),
             },
+            gas: Some(2_000_000_000),
             ..Default::default()
         };
-
-        trace!("[Executing raw tx] Getting gas limit");
-
-        tx = tx.gas_limit(2_000_000);
 
         trace!("[Executing raw tx] Sending transaction");
 
