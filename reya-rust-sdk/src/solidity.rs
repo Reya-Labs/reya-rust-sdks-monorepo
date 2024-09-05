@@ -36,6 +36,15 @@ sol!(
     "./transactions/abi/Errors.json"
 );
 
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    // collection of all rcp events from Core
+    RpcEvents,
+    "./transactions/abi/Events.json"
+);
+
 // Codegen from ABI file to interact with the multicall3 contract
 sol!(
     #[allow(missing_docs)]

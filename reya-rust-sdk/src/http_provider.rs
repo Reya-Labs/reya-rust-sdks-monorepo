@@ -6,8 +6,9 @@ use crate::multicall::multicall_oracle_prepend;
 use crate::solidity::{
     BatchExecuteInputBytes, CoreProxy,
     CoreProxy::{MarginInfo, MulticallResult, TriggerAutoExchangeInput},
-    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy,
+    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy, RpcErrors,
     RpcErrors::RpcErrorsErrors,
+    RpcEvents,
 };
 use alloy::rpc::types::TransactionInput;
 use alloy::rpc::types::TransactionRequest;
@@ -29,6 +30,7 @@ use eyre;
 use eyre::{Report, WrapErr};
 use hex::FromHex;
 use rust_decimal::{prelude::*, Decimal};
+use std::time::{Duration, Instant};
 use tracing::*;
 
 #[derive(Debug)]
@@ -546,12 +548,75 @@ impl HttpProvider {
                 return Some(transaction_receipt.clone()?);
             }
             Err(err) => {
-                error!("{:?}", err);
+                error!(
+                    "Failed to get tx receipt hash {:?} with error {:?}",
+                    tx_hash, err
+                );
                 return None;
             }
         }
     }
 
+    async fn poll_for_receipt(
+        &self,
+        tx_hash: alloy_primitives::FixedBytes<32>,
+    ) -> Option<rpc::types::TransactionReceipt> {
+        let polling_interval = Duration::from_secs(1);
+        let mut run = 0;
+
+        loop {
+            match self.get_transaction_receipt(tx_hash).await {
+                Some(receipt) => {
+                    return Some(receipt);
+                }
+                None => {
+                    info!("Transaction not yet confirmed. Waiting...");
+                    tokio::time::sleep(polling_interval).await;
+                    run = run + 1;
+                    if (run >= 5) {
+                        return None;
+                    }
+                }
+            }
+        }
+    }
+
+    ///
+    /// gets the transaction receipt and decodes FailedCall events
+    ///
+    async fn decode_logs(&self, tx_hash: alloy_primitives::FixedBytes<32>) -> String {
+        let tx_receipt_option = self.poll_for_receipt(tx_hash).await;
+        match tx_receipt_option {
+            Some(tx_receipt) => {
+                let log_rec_option = tx_receipt.inner.as_receipt();
+                match log_rec_option {
+                    Some(log_rec) => {
+                        let logs = log_rec.logs.clone();
+                        let mut reason_string = String::from("");
+                        for log in logs {
+                            let topic = log.inner.data.topics()[0];
+                            if topic == RpcEvents::FailedCall::SIGNATURE_HASH {
+                                let failed_call: RpcEvents::FailedCall =
+                                    log.log_decode().unwrap().inner.data;
+                                let execution_price_decode =
+                                    decode_auto_exchange_error(failed_call.returnData.clone());
+                                reason_string.push_str(&String::from(execution_price_decode.0));
+                            }
+                        }
+                        return reason_string;
+                    }
+                    None => {
+                        warn!("Failed to get logs for tx hash {:?}", tx_hash);
+                        return String::from("");
+                    }
+                }
+            }
+            None => {
+                warn!("Failed to get receipt for tx hash {:?}", tx_hash);
+                return String::from("");
+            }
+        }
+    }
     ///
     /// get the current pool price by market id and returns the instantaneous pool price
     ///
@@ -592,7 +657,9 @@ impl HttpProvider {
         match builder.send().await {
             Ok(transaction_result) => {
                 trace!("End Try Aggregate");
-                return eyre::Ok(transaction_result.tx_hash().clone());
+                let hash = transaction_result.tx_hash().clone();
+
+                return eyre::Ok(hash);
             }
             Err(e) => match handle_rpc_error(e) {
                 Some(error_string) => {
@@ -831,6 +898,9 @@ impl HttpProvider {
             }
         }
 
+        for tx_hash in &transaction_hashes {
+            self.decode_logs(tx_hash.clone()).await; // logs error
+        }
         return eyre::Ok(transaction_hashes);
     }
 }
@@ -1068,7 +1138,7 @@ fn handle_rpc_error(e: Error) -> Option<String> {
                         }
                     }
                 }
-                None => error!("[Error decoding] Failed to get error response"),
+                None => error!("[Error decoding] Failed to get error response {:?}", e),
             }
         }
         _ => {

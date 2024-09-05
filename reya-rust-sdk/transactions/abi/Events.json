@@ -1,0 +1,1539 @@
+[
+    {
+        "type": "event",
+        "name": "AccountCollateralSharesUpdated",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "sharesDelta",
+                "type": "int256",
+                "indexed": false,
+                "internalType": "int256"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountCreated",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "owner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "trigger",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountExecutedLiquidationBid",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "liquidationBid",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct LiquidationBid",
+                "components": [
+                    {
+                        "name": "liquidatorAccountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "hookAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "liquidatorRewardParameter",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "quoteCollateral",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "marketIds",
+                        "type": "uint128[]",
+                        "internalType": "uint128[]"
+                    },
+                    {
+                        "name": "inputs",
+                        "type": "bytes[]",
+                        "internalType": "bytes[]"
+                    }
+                ]
+            },
+            {
+                "name": "success",
+                "type": "bool",
+                "indexed": false,
+                "internalType": "bool"
+            },
+            {
+                "name": "bidSubmissionKeeperId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountNewActiveMarket",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "marketId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountNewLiquidationBid",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "liquidationBid",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct LiquidationBid",
+                "components": [
+                    {
+                        "name": "liquidatorAccountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "hookAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "liquidatorRewardParameter",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "quoteCollateral",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "marketIds",
+                        "type": "uint128[]",
+                        "internalType": "uint128[]"
+                    },
+                    {
+                        "name": "inputs",
+                        "type": "bytes[]",
+                        "internalType": "bytes[]"
+                    }
+                ]
+            },
+            {
+                "name": "bidScore",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "bidIndex",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountOwnerUpdated",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountPermissionGranted",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "permission",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AccountPermissionRevoked",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "permission",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AutoExchangeConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct AutoExchangeConfig",
+                "components": [
+                    {
+                        "name": "totalAutoExchangeThresholdInUSD",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "negativeCollateralBalancesMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "quoteBufferPercentage",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "AutoExchangeTriggered",
+        "inputs": [
+            {
+                "name": "input",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct TriggerAutoExchangeInput",
+                "components": [
+                    {
+                        "name": "accountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "liquidatorAccountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "requestedQuoteAmount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "collateral",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "inCollateral",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ]
+            },
+            {
+                "name": "output",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct AutoExchangeAmounts",
+                "components": [
+                    {
+                        "name": "collateralAmountToLiquidator",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "quoteAmountToIF",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "quoteAmountToAccount",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BackstopLPConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct BackstopLPConfig",
+                "components": [
+                    {
+                        "name": "accountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "liquidationFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "minFreeCollateralThresholdInUSD",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "withdrawCooldownDurationInSeconds_DEPRECATED",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "withdrawDurationInSeconds_DEPRECATED",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BlocksOfQuoteCollateralUpdated",
+        "inputs": [
+            {
+                "name": "quoteCollateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blocksOfQuoteCollateral",
+                "type": "uint256[]",
+                "indexed": false,
+                "internalType": "uint256[]"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralBaseConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateralAddress",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct CollateralConfig",
+                "components": [
+                    {
+                        "name": "depositingEnabled",
+                        "type": "bool",
+                        "internalType": "bool"
+                    },
+                    {
+                        "name": "cap",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "withdrawalWindowSize_DEPRECATED",
+                        "type": "uint32",
+                        "internalType": "uint32"
+                    },
+                    {
+                        "name": "withdrawalTvlPercentageLimit_DEPRECATED",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "autoExchangeThreshold",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "autoExchangeInsuranceFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "autoExchangeDustThreshold",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "bidSubmissionFee",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralParentConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateralAddress",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct ParentCollateralConfig",
+                "components": [
+                    {
+                        "name": "collateralAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "priceHaircut",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "autoExchangeDiscount",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "oracleNodeId",
+                        "type": "bytes32",
+                        "internalType": "bytes32"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralPoolCollateralSharesUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "sharesDelta",
+                "type": "int256",
+                "indexed": false,
+                "internalType": "int256"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralPoolCreation",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "reservedAccountId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralPoolMerge",
+        "inputs": [
+            {
+                "name": "childCollateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "parentCollateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CollateralPoolOwnerUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ConfigurationPermissionGranted",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "configuration",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "target",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ConfigurationPermissionRevoked",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "configuration",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "target",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "CustomImMultiplier",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "imMultiplier",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "UD60x18"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "Deposited",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "sender",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ExchangeCreation",
+        "inputs": [
+            {
+                "name": "exchangeId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "exchangeFeeCollectorAccountId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ExchangeRegistered",
+        "inputs": [
+            {
+                "name": "exchangeId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "FailedCall",
+        "inputs": [
+            {
+                "name": "index",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "inputData",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "returnData",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "GlobalCollateralConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralDecimals",
+                "type": "uint8",
+                "indexed": false,
+                "internalType": "uint8"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct GlobalCollateralConfig",
+                "components": [
+                    {
+                        "name": "collateralAdapter",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "withdrawalWindowSize",
+                        "type": "uint32",
+                        "internalType": "uint32"
+                    },
+                    {
+                        "name": "withdrawalTvlPercentageLimit",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "IdAdvanced",
+        "inputs": [
+            {
+                "name": "idType",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "newId",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "InstrumentRegistrationFlagSet",
+        "inputs": [
+            {
+                "name": "instrumentAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "isRegistered",
+                "type": "bool",
+                "indexed": false,
+                "internalType": "bool"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "InstrumentRegistrationUpdated",
+        "inputs": [
+            {
+                "name": "instrumentAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "isRegistered",
+                "type": "bool",
+                "indexed": false,
+                "internalType": "bool"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "InsuranceFundConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct InsuranceFundConfig",
+                "components": [
+                    {
+                        "name": "accountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "liquidationFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LimitConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct LimitConfig",
+                "components": [
+                    {
+                        "name": "maxMarkets",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "maxCollaterals",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "LiquidationConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct LiquidationConfig",
+                "components": [
+                    {
+                        "name": "bidKeeperFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "queueDurationInSeconds",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "maxOrdersInBid",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "maxBidsInQueue",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "bidScoreWeight",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "backstopKeeperFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "adlExecutionKeeperFee",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "dDutchMin",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "dMax",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "MarketRegistered",
+        "inputs": [
+            {
+                "name": "instrument",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "marketId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "quoteCollateral",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "name",
+                "type": "string",
+                "indexed": false,
+                "internalType": "string"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "MarketUpdated",
+        "inputs": [
+            {
+                "name": "market",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct Market.Data",
+                "components": [
+                    {
+                        "name": "id",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "quoteCollateral",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "instrumentAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "name",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "riskBlockId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    },
+                    {
+                        "name": "collateralPoolId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "ProtocolConfigurationUpdated",
+        "inputs": [
+            {
+                "name": "config",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct ProtocolConfiguration.Data",
+                "components": [
+                    {
+                        "name": "oracleManagerAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "exchangePassNFTAddress",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "feeCollectorAccountId",
+                        "type": "uint128",
+                        "internalType": "uint128"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "QuoteCollateralsUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "quoteCollaterals",
+                "type": "address[]",
+                "indexed": false,
+                "internalType": "address[]"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "RiskMultipliersUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "newConfig",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct RiskMultipliers",
+                "components": [
+                    {
+                        "name": "imMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "mmrMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "dutchMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "adlMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    },
+                    {
+                        "name": "imBufferMultiplier",
+                        "type": "uint256",
+                        "internalType": "UD60x18"
+                    }
+                ]
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "SuccessfulCall",
+        "inputs": [
+            {
+                "name": "index",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "inputData",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "returnData",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "SupportingCollateralsUpdated",
+        "inputs": [
+            {
+                "name": "collateralPoolId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "parentCollateral",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "supportingCollaterals",
+                "type": "address[]",
+                "indexed": false,
+                "internalType": "address[]"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "TransferBetweenMarginAccounts",
+        "inputs": [
+            {
+                "name": "sourceAccountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "destinationAccountId",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "sender",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "Withdrawn",
+        "inputs": [
+            {
+                "name": "accountId",
+                "type": "uint128",
+                "indexed": true,
+                "internalType": "uint128"
+            },
+            {
+                "name": "collateral",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            },
+            {
+                "name": "sender",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "blockTimestamp",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    }
+]
