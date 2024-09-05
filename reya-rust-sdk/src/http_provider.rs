@@ -548,7 +548,10 @@ impl HttpProvider {
                 return Some(transaction_receipt.clone()?);
             }
             Err(err) => {
-                debug!("Failed to get tx receipt hash {:?}", err);
+                error!(
+                    "Failed to get tx receipt hash {:?} with error {:?}",
+                    tx_hash, err
+                );
                 return None;
             }
         }
