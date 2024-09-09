@@ -85,7 +85,8 @@ pub fn load_enviroment_config() -> SdkConfig {
 #[allow(dead_code)]
 
 // exchanges
-pub const REYA_EXCHANGE_ID: u128 = 2u128; //1=reya exchange during contest
+pub const REYA_EXCHANGE_ID: u128 = 1u128; //1=reya exchange
+pub const REYA_EXCHANGE_ID_CONTEST: u128 = 2u128; //2=reya exchange during contest
 
 // multicall3 contract address
 pub const MULTICALL_ADDRESS: &str = "0xcA11bde05977b3631167028862bE2a173976CA11";
