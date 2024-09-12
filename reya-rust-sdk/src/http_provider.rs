@@ -992,7 +992,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
             RpcErrorsErrors::UnacceptableOrderPrice(err) => {
                 error!("[Decoding reason] Reason error = {:?}", err);
                 return (
-                    String::from("Unauthorized"),
+                    String::from("UnacceptableOrderPrice"),
                     ReasonError::UnacceptableOrderPrice,
                 );
             }
