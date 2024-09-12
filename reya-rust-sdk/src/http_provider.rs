@@ -30,7 +30,7 @@ use eyre;
 use eyre::{Report, WrapErr};
 use hex::FromHex;
 use rust_decimal::{prelude::*, Decimal};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tracing::*;
 
 #[derive(Debug)]
@@ -45,6 +45,8 @@ pub enum ReasonError {
     SignerNotAuthorized,
     StalePriceDetected,
     ZeroSlTpOrderSize,
+    Unauthorized,
+    UnacceptableOrderPrice,
     UnknownError,  // special error when the decoded error is not known
     DecodingError, // special error when the decoding of the error fails
 }
@@ -978,6 +980,20 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
                 return (
                     String::from("ZeroSlTpOrderSize"),
                     ReasonError::ZeroSlTpOrderSize,
+                );
+            }
+            RpcErrorsErrors::Unauthorized(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("Unauthorized"),
+                    ReasonError::Unauthorized,
+                );
+            }
+            RpcErrorsErrors::UnacceptableOrderPrice(err) => {
+                error!("[Decoding reason] Reason error = {:?}", err);
+                return (
+                    String::from("UnacceptableOrderPrice"),
+                    ReasonError::UnacceptableOrderPrice,
                 );
             }
             // all other errors are mapped to UnknownError
