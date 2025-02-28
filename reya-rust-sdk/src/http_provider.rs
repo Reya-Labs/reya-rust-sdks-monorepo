@@ -6,10 +6,11 @@ use crate::multicall::multicall_oracle_prepend;
 use crate::solidity::{
     BatchExecuteInputBytes, CoreProxy,
     CoreProxy::{MarginInfo, MulticallResult, TriggerAutoExchangeInput},
-    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy, RpcErrors,
+    ExecuteInputBytes, OrderGatewayProxy, PassivePerpInstrumentProxy, PassivePoolProxy, RpcErrors,
     RpcErrors::RpcErrorsErrors,
     RpcEvents,
 };
+use alloy::consensus::transaction;
 use alloy::rpc::types::TransactionInput;
 use alloy::rpc::types::TransactionRequest;
 use alloy::{
@@ -905,6 +906,78 @@ impl HttpProvider {
         }
         return eyre::Ok(transaction_hashes);
     }
+
+    pub async fn trigger_srusd_auto_exchange_for_account(
+        &self,
+        account_id: u128,
+    ) -> eyre::Result<B256> {
+        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
+        let wallet = EthereumWallet::from(signer);
+
+        let provider = ProviderBuilder::new()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_http(self.sdk_config.rpc_url.clone());
+
+        let proxy = PassivePoolProxy::new(
+            self.sdk_config.passive_pool_proxy_address.parse()?,
+            provider,
+        );
+
+        let builder = proxy
+            .triggerStakedAssetAutoExchange(1, account_id)
+            .gas(2_000_000_000);
+
+        match builder.send().await {
+            Ok(transaction_result) => {
+                trace!("End Trigger SRUSD Auto-exchange");
+                let hash = transaction_result.tx_hash().clone();
+
+                return eyre::Ok(hash);
+            }
+            Err(e) => match handle_rpc_error(e) {
+                Some(error_string) => {
+                    return Err(Report::msg(format!(
+                        "SRUSD Auto-exchange transaction reverted {:?}",
+                        error_string
+                    )));
+                }
+                None => {
+                    return Err(Report::msg(format!(
+                        "SRUSD Auto-exchange transaction reverted"
+                    )));
+                }
+            },
+        }
+    }
+
+    pub async fn trigger_srusd_auto_exchange_for_accounts(
+        &self,
+        account_ids: Vec<u128>,
+    ) -> eyre::Result<Vec<FixedBytes<32>>> {
+        let mut transaction_hashes: Vec<FixedBytes<32>> = Vec::new();
+        for i in 0..account_ids.len() {
+            let transaction_hash = self
+                .trigger_srusd_auto_exchange_for_account(account_ids[i])
+                .await;
+            match transaction_hash {
+                Ok(tx_hash) => {
+                    transaction_hashes.push(tx_hash);
+                }
+                Err(err) => {
+                    return Err(Report::msg(format!(
+                        "Failed to trigger SRUSD AE for account {:?}, error={:?}",
+                        account_ids[i], err
+                    )));
+                }
+            }
+        }
+
+        for tx_hash in &transaction_hashes {
+            self.decode_logs(tx_hash.clone()).await; // logs error
+        }
+        return eyre::Ok(transaction_hashes);
+    }
 }
 
 ///
@@ -984,10 +1057,7 @@ fn decode_reason(reason_bytes: Bytes) -> (String, ReasonError) {
             }
             RpcErrorsErrors::Unauthorized(err) => {
                 error!("[Decoding reason] Reason error = {:?}", err);
-                return (
-                    String::from("Unauthorized"),
-                    ReasonError::Unauthorized,
-                );
+                return (String::from("Unauthorized"), ReasonError::Unauthorized);
             }
             RpcErrorsErrors::UnacceptableOrderPrice(err) => {
                 error!("[Decoding reason] Reason error = {:?}", err);

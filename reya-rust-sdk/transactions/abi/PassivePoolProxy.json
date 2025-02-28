@@ -1,0 +1,12 @@
+[
+  {
+    "type": "function",
+    "name": "triggerStakedAssetAutoExchange",
+    "inputs": [
+      { "name": "poolId", "type": "uint128", "internalType": "uint128" },
+      { "name": "accountId", "type": "uint128", "internalType": "uint128" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]
