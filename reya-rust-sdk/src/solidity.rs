@@ -27,6 +27,15 @@ sol!(
     "./transactions/abi/CoreProxy.json"
 );
 
+// Codegen from ABI file to interact with the reya passive pool proxy contract
+sol!(
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    #[derive(Debug)]
+    PassivePoolProxy,
+    "./transactions/abi/PassivePoolProxy.json"
+);
+
 sol!(
     #[allow(missing_docs)]
     #[sol(rpc)]

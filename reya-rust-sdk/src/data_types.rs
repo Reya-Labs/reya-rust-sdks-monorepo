@@ -21,6 +21,7 @@ pub struct SdkConfig {
     pub order_gateway_contract_address: String,
     pub passiv_perp_instrument_address: String,
     pub oracle_adapters_contract_address: String,
+    pub passive_pool_proxy_address: String,
     pub stork_api_key: String,
     pub private_key: String,
     pub rpc_url: Url,
@@ -44,6 +45,10 @@ pub fn load_enviroment_config() -> SdkConfig {
 
     let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
         .expect("Oracle adapters contract address must be set as environment variable")
+        .to_lowercase();
+
+    let passive_pool_proxy_address = env::var("PASSIVE_POOL_PROXY_ADDRESS")
+        .expect("Passive pool proxy address must be set as environment variable")
         .to_lowercase();
 
     let private_key = env::var("PRIVATE_KEY")
@@ -73,6 +78,7 @@ pub fn load_enviroment_config() -> SdkConfig {
         order_gateway_contract_address,
         passiv_perp_instrument_address,
         oracle_adapters_contract_address,
+        passive_pool_proxy_address,
         stork_api_key,
         private_key,
         rpc_url: rpc_url.unwrap(),
