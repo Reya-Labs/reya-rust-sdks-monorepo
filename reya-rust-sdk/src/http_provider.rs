@@ -662,6 +662,8 @@ impl HttpProvider {
                 trace!("End Try Aggregate");
                 let hash = transaction_result.tx_hash().clone();
 
+                transaction_result.get_receipt().await;
+
                 return eyre::Ok(hash);
             }
             Err(e) => match handle_rpc_error(e) {
@@ -932,6 +934,8 @@ impl HttpProvider {
             Ok(transaction_result) => {
                 trace!("End Trigger SRUSD Auto-exchange");
                 let hash = transaction_result.tx_hash().clone();
+
+                transaction_result.get_receipt().await;
 
                 return eyre::Ok(hash);
             }
