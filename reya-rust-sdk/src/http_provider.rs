@@ -969,10 +969,11 @@ impl HttpProvider {
                     transaction_hashes.push(tx_hash);
                 }
                 Err(err) => {
-                    return Err(Report::msg(format!(
+                    transaction_hashes.push(FixedBytes::<32>::default());
+                    info!(
                         "Failed to trigger SRUSD AE for account {:?}, error={:?}",
                         account_ids[i], err
-                    )));
+                    );
                 }
             }
         }
