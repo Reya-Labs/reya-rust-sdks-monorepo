@@ -6,6 +6,7 @@ use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::env;
 use url::Url;
+use eyre::{Result, WrapErr};
 
 use crate::solidity::OrderGatewayProxy;
 
@@ -28,52 +29,42 @@ pub struct SdkConfig {
     pub counter_party_id: u128,
 }
 
-pub fn load_enviroment_config() -> SdkConfig {
+pub fn load_enviroment_config() -> Result<SdkConfig> {
     dotenv().ok();
 
     let core_proxy_address = env::var("CORE_PROXY_ADDRESS")
-        .expect("Core proxy address must be set as environment variable")
+        .wrap_err("CORE_PROXY_ADDRESS must be set")?
         .to_lowercase();
-
     let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
-        .expect("Order gateway contract address must be set as environment variable")
+        .wrap_err("ORDER_GATEWAY_CONTRACT_ADDRESS must be set")?
         .to_lowercase();
-
     let passiv_perp_instrument_address = env::var("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
-        .expect("Passive perp instrument address must be set as environment variable")
+        .wrap_err("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS must be set")?
         .to_lowercase();
-
     let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
-        .expect("Oracle adapters contract address must be set as environment variable")
+        .wrap_err("ORACLE_ADAPTERS_CONTRACT_ADDRESS must be set")?
         .to_lowercase();
-
     let passive_pool_proxy_address = env::var("PASSIVE_POOL_PROXY_ADDRESS")
-        .expect("Passive pool proxy address must be set as environment variable")
+        .wrap_err("PASSIVE_POOL_PROXY_ADDRESS must be set")?
         .to_lowercase();
-
     let private_key = env::var("PRIVATE_KEY")
-        .expect("Private key must be set as environment variable")
+        .wrap_err("PRIVATE_KEY must be set")?
         .to_lowercase();
-
     let stork_api_key = env::var("STORK_API_KEY")
-        .expect("Stork api key must be set as environment variable")
+        .wrap_err("STORK_API_KEY must be set")?
         .to_lowercase();
-
     let rpc_url = Url::parse(
-        env::var("RPC_URL")
-            .expect("RPC Url must be set as environment variable")
-            .to_lowercase()
-            .as_str(),
-    );
+        &env::var("RPC_URL")
+            .wrap_err("RPC_URL must be set")?
+            .to_lowercase(),
+    )
+    .wrap_err("RPC_URL must be a valid URL")?;
+    let counter_party_id = env::var("COUNTER_PARTY_ID")
+        .wrap_err("COUNTER_PARTY_ID must be set")?
+        .parse::<u128>()
+        .wrap_err("COUNTER_PARTY_ID must be an unsigned integer")?;
 
-    let counter_party_id = u128::from_str_radix(
-        env::var("COUNTER_PARTY_ID")
-            .expect("Counter party id 2 or 4 and must be set as environment variable")
-            .as_str(),
-        10,
-    );
-
-    let sdk_config = SdkConfig {
+    Ok(SdkConfig {
         core_proxy_address,
         order_gateway_contract_address,
         passiv_perp_instrument_address,
@@ -81,11 +72,9 @@ pub fn load_enviroment_config() -> SdkConfig {
         passive_pool_proxy_address,
         stork_api_key,
         private_key,
-        rpc_url: rpc_url.unwrap(),
-        counter_party_id: counter_party_id.unwrap(),
-    };
-
-    return sdk_config;
+        rpc_url,
+        counter_party_id,
+    })
 }
 
 #[allow(dead_code)]
