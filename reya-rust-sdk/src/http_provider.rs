@@ -92,6 +92,12 @@ pub struct HttpProvider {
     sdk_config: data_types::SdkConfig,
 }
 
+fn parse_private_key(private_key: &str) -> eyre::Result<PrivateKeySigner> {
+    private_key
+        .parse()
+        .wrap_err("Private key must be a valid hex-encoded signing key")
+}
+
 /**
  * HTTP Provider, implements several wrapper methods around Reya Core Proxy Contract On Reya Network
  * - create_account, create a new margin account
@@ -118,11 +124,8 @@ impl HttpProvider {
         }
     }
 
-    fn get_wallet_address(&self) -> Address {
-        let signer = PrivateKeySigner::from_str(&self.sdk_config.private_key)
-            .expect("should parse private key");
-
-        return signer.address();
+    fn get_wallet_address(&self) -> eyre::Result<Address> {
+        Ok(parse_private_key(&self.sdk_config.private_key)?.address())
     }
 
     /// CreateAccount, creates an account on the reya network and returns the transaction hash on success
@@ -153,11 +156,11 @@ impl HttpProvider {
     ///  '''
     pub async fn create_account(
         &self,
-        private_key: &String,
+        private_key: &str,
         account_owner_address: &Address,
     ) -> eyre::Result<B256> // return the transaction hash
     {
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let signer = parse_private_key(private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -242,7 +245,7 @@ impl HttpProvider {
             order_price_limit
         );
 
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let signer = parse_private_key(private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -258,7 +261,8 @@ impl HttpProvider {
 
         // generate encoded core command input
         let base_price_encoded = (order_base, order_price_limit).abi_encode_sequence();
-        let counterparty_account_ids: Vec<u128> = vec![2u128]; // hardcode counter party id = 2
+        // Use the environment-specific counterparty configured in SdkConfig.
+        let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id];
         let base_price_counterparties_encoded: Vec<u8> =
             (counterparty_account_ids, base_price_encoded).abi_encode_sequence();
 
@@ -301,16 +305,18 @@ impl HttpProvider {
             let batch_order: &data_types::BatchOrder = &batch_orders[i];
 
             trace!(
-                "[Execute CO batch] Processing order batch: {:?}",
-                batch_order
+                "[Execute CO batch] Processing order: account_id={}, market_id={}, nonce={}",
+                batch_order.account_id,
+                batch_order.market_id,
+                batch_order.order_nonce
             );
 
             let mut encoded_input_bytes: Vec<u8> = Vec::new();
             let trigger_price: U256 = (batch_order.trigger_price * PRICE_MULTIPLIER)
-                .trunc() // take only the integer part
+                .trunc()
                 .to_string()
                 .parse()
-                .unwrap();
+                .wrap_err("Failed to encode the batch order trigger price")?;
 
             if batch_order.order_type == data_types::OrderType::StopLoss
                 || batch_order.order_type == data_types::OrderType::TakeProfit
@@ -342,7 +348,7 @@ impl HttpProvider {
                     .trunc()
                     .to_string()
                     .parse()
-                    .unwrap();
+                    .wrap_err("Failed to encode the batch order base amount")?;
 
                 let execute_input_bytes: ExecuteInputBytes = ExecuteInputBytes {
                     order_base: order_base,
@@ -358,7 +364,8 @@ impl HttpProvider {
                 );
             }
 
-            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id]; // counter party id = 2 for production, 4 for testnet
+            // Use the environment-specific counterparty configured in SdkConfig.
+            let counterparty_account_ids: Vec<u128> = vec![self.sdk_config.counter_party_id];
 
             let conditional_order_details = OrderGatewayProxy::ConditionalOrderDetails {
                 accountId: batch_order.account_id,
@@ -381,9 +388,8 @@ impl HttpProvider {
         }
 
         trace!(
-            "[Execute CO batch] Submitting order batch: orders={:?}, signatures={:?}",
-            orders,
-            signatures
+            "[Execute CO batch] Submitting order batch with {} orders",
+            orders.len()
         );
 
         let orders_gateway: Address = self.sdk_config.order_gateway_contract_address.parse()?;
@@ -396,7 +402,7 @@ impl HttpProvider {
                 calldata: batch_execute_calldata,
             },
             stork_prices,
-        );
+        )?;
 
         trace!("[Execute CO batch] Calling raw tx");
         return self
@@ -412,7 +418,7 @@ impl HttpProvider {
     ) -> eyre::Result<B256> {
         trace!("[Executing raw tx] Start");
 
-        let signer: PrivateKeySigner = private_key.parse().unwrap();
+        let signer = parse_private_key(private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         let provider = ProviderBuilder::new()
@@ -450,7 +456,7 @@ impl HttpProvider {
     {
         trace!("Start Trigger Auto-exchange");
 
-        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
+        let signer = parse_private_key(&self.sdk_config.private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -597,13 +603,22 @@ impl HttpProvider {
                         let logs = log_rec.logs.clone();
                         let mut reason_string = String::from("");
                         for log in logs {
-                            let topic = log.inner.data.topics()[0];
-                            if topic == RpcEvents::FailedCall::SIGNATURE_HASH {
-                                let failed_call: RpcEvents::FailedCall =
-                                    log.log_decode().unwrap().inner.data;
+                            let Some(topic) = log.inner.data.topics().first() else {
+                                warn!("Skipping a transaction log without topics");
+                                continue;
+                            };
+
+                            if *topic == RpcEvents::FailedCall::SIGNATURE_HASH {
+                                let failed_call: RpcEvents::FailedCall = match log.log_decode() {
+                                    Ok(decoded_log) => decoded_log.inner.data,
+                                    Err(error) => {
+                                        warn!("Skipping an undecodable FailedCall event: {:?}", error);
+                                        continue;
+                                    }
+                                };
                                 let execution_price_decode =
                                     decode_auto_exchange_error(failed_call.returnData.clone());
-                                reason_string.push_str(&String::from(execution_price_decode.0));
+                                reason_string.push_str(&execution_price_decode.0);
                             }
                         }
                         return reason_string;
@@ -642,7 +657,7 @@ impl HttpProvider {
     }
 
     async fn try_aggregate(&self, params: data_types::TryAggregateParams) -> eyre::Result<B256> {
-        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
+        let signer = parse_private_key(&self.sdk_config.private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         // create http provider
@@ -693,7 +708,7 @@ impl HttpProvider {
 
         let CoreProxy::tryAggregateReturn { result } = proxy
             .tryAggregate(params.require_success, params.calls)
-            .from(self.get_wallet_address())
+            .from(self.get_wallet_address()?)
             .call()
             .await?;
 
@@ -706,6 +721,10 @@ impl HttpProvider {
         account_ids: &Vec<u128>,
         quote_collateral: Address,
     ) -> eyre::Result<Vec<U256>> {
+        if batch_size == 0 {
+            return Err(Report::msg("batch_size must be greater than zero"));
+        }
+
         let mut max_quote_to_cover_in_auto_exchange: Vec<U256> = Vec::new();
 
         for i in (0..account_ids.len()).step_by(batch_size) {
@@ -720,7 +739,11 @@ impl HttpProvider {
                 let calldata = alloy::hex::encode(
                     CoreProxy::calculateMaxQuoteToCoverInAutoExchangeCall::abi_encode(&data),
                 );
-                batch_calldata_array.push(calldata.parse().unwrap());
+                batch_calldata_array.push(
+                    calldata
+                        .parse()
+                        .wrap_err("Failed to encode max-quote multicall data")?,
+                );
             }
 
             let multicall_results = self
@@ -732,13 +755,21 @@ impl HttpProvider {
 
             match multicall_results {
                 Ok(multicall_results) => {
-                    for i in 0..batch_account_ids.len() {
-                        let return_data = &multicall_results[i].returnData;
-                        if return_data.len() > 0 {
-                            let return_data_u256 = U256::abi_decode(return_data, true).unwrap();
+                    for (i, account_id) in batch_account_ids.iter().enumerate() {
+                        let Some(multicall_result) = multicall_results.get(i) else {
+                            return Err(Report::msg(format!(
+                                "Missing max-quote result for account {}",
+                                account_id
+                            )));
+                        };
+
+                        let return_data = &multicall_result.returnData;
+                        if !return_data.is_empty() {
+                            let return_data_u256 = U256::abi_decode(return_data, true)
+                                .wrap_err("Failed to decode max-quote multicall result")?;
                             max_quote_to_cover_in_auto_exchange.push(return_data_u256);
                         } else {
-                            max_quote_to_cover_in_auto_exchange.push(U256::from(0));
+                            max_quote_to_cover_in_auto_exchange.push(U256::ZERO);
                         }
                     }
                 }
@@ -760,6 +791,10 @@ impl HttpProvider {
         account_ids: &Vec<u128>,
         token_address: Address,
     ) -> eyre::Result<Vec<MarginInfo>> {
+        if batch_size == 0 {
+            return Err(Report::msg("batch_size must be greater than zero"));
+        }
+
         let mut node_margin_infos: Vec<MarginInfo> = Vec::new();
 
         for i in (0..account_ids.len()).step_by(batch_size) {
@@ -772,7 +807,11 @@ impl HttpProvider {
                     CoreProxy::getNodeMarginInfoCall::new((account_id, token_address.clone()));
                 let calldata =
                     alloy::hex::encode(CoreProxy::getNodeMarginInfoCall::abi_encode(&data));
-                batch_calldata_array.push(calldata.parse().unwrap());
+                batch_calldata_array.push(
+                    calldata
+                        .parse()
+                        .wrap_err("Failed to encode node-margin multicall data")?,
+                );
             }
 
             let multicall_results = self
@@ -785,8 +824,8 @@ impl HttpProvider {
             match multicall_results {
                 Ok(results) => {
                     for result in results {
-                        let node_margin_info =
-                            MarginInfo::abi_decode(&result.returnData, true).unwrap();
+                        let node_margin_info = MarginInfo::abi_decode(&result.returnData, true)
+                            .wrap_err("Failed to decode node-margin multicall result")?;
                         node_margin_infos.push(node_margin_info);
                     }
                 }
@@ -808,6 +847,10 @@ impl HttpProvider {
         account_ids: &Vec<u128>,
         token_address: Address,
     ) -> eyre::Result<Vec<MarginInfo>> {
+        if batch_size == 0 {
+            return Err(Report::msg("batch_size must be greater than zero"));
+        }
+
         let mut token_margin_infos: Vec<MarginInfo> = Vec::new();
 
         for i in (0..account_ids.len()).step_by(batch_size) {
@@ -820,7 +863,11 @@ impl HttpProvider {
                     CoreProxy::getTokenMarginInfoCall::new((account_id, token_address.clone()));
                 let calldata =
                     alloy::hex::encode(CoreProxy::getTokenMarginInfoCall::abi_encode(&data));
-                batch_calldata_array.push(calldata.parse().unwrap());
+                batch_calldata_array.push(
+                    calldata
+                        .parse()
+                        .wrap_err("Failed to encode token-margin multicall data")?,
+                );
             }
 
             let multicall_results = self
@@ -833,8 +880,8 @@ impl HttpProvider {
             match multicall_results {
                 Ok(results) => {
                     for result in results {
-                        let token_margin_info =
-                            MarginInfo::abi_decode(&result.returnData, true).unwrap();
+                        let token_margin_info = MarginInfo::abi_decode(&result.returnData, true)
+                            .wrap_err("Failed to decode token-margin multicall result")?;
                         token_margin_infos.push(token_margin_info);
                     }
                 }
@@ -858,6 +905,10 @@ impl HttpProvider {
         quote_collateral: Address,
         out_collaterals: Vec<Address>,
     ) -> eyre::Result<Vec<FixedBytes<32>>> {
+        if batch_size == 0 {
+            return Err(Report::msg("batch_size must be greater than zero"));
+        }
+
         let mut transaction_hashes: Vec<FixedBytes<32>> = Vec::new();
         for i in (0..ae_account_infos.len()).step_by(batch_size) {
             let batch_account_infos = &ae_account_infos
@@ -877,7 +928,11 @@ impl HttpProvider {
                     let data = CoreProxy::triggerAutoExchangeCall::new((params,));
                     let calldata =
                         alloy::hex::encode(CoreProxy::triggerAutoExchangeCall::abi_encode(&data));
-                    batch_calldata_array.push(calldata.parse().unwrap());
+                    batch_calldata_array.push(
+                        calldata
+                            .parse()
+                            .wrap_err("Failed to encode auto-exchange multicall data")?,
+                    );
                 }
             }
 
@@ -913,7 +968,7 @@ impl HttpProvider {
         &self,
         account_id: u128,
     ) -> eyre::Result<B256> {
-        let signer: PrivateKeySigner = self.sdk_config.private_key.parse().unwrap();
+        let signer = parse_private_key(&self.sdk_config.private_key)?;
         let wallet = EthereumWallet::from(signer);
 
         let provider = ProviderBuilder::new()
@@ -1256,21 +1311,39 @@ pub fn extract_execute_batch_outputs(
 
     for log in logs {
         let log_data = log.data();
-        // topic0 is the hash of the signature of the event.
-        let topic0 = log_data.topics()[0];
+        // Topic zero is the event signature hash.
+        let Some(topic0) = log_data.topics().first() else {
+            warn!("Skipping a transaction log without topics");
+            continue;
+        };
 
-        match topic0 {
+        match *topic0 {
             // Match the `SuccessfulOrder(uint256,tuple,bytes,uint256)` event.
             OrderGatewayProxy::SuccessfulOrder::SIGNATURE_HASH => {
-                let successful_order: OrderGatewayProxy::SuccessfulOrder =
-                    log.log_decode().unwrap().inner.data;
+                let successful_order: OrderGatewayProxy::SuccessfulOrder = match log.log_decode() {
+                    Ok(decoded_log) => decoded_log.inner.data,
+                    Err(error) => {
+                        warn!("Skipping an undecodable SuccessfulOrder event: {:?}", error);
+                        continue;
+                    }
+                };
 
-                //decode and convert execution price to a Decimal
+                // Decode the execution price and convert it to a Decimal.
                 let execution_price_decode =
-                    U256::abi_decode(&successful_order.output.clone(), true).unwrap();
-                let execution_price = Decimal::from_str(&execution_price_decode.to_string())
-                    .unwrap()
-                    / data_types::PRICE_MULTIPLIER;
+                    match U256::abi_decode(&successful_order.output, true) {
+                        Ok(price) => price,
+                        Err(error) => {
+                            warn!("Skipping a SuccessfulOrder with invalid output: {:?}", error);
+                            continue;
+                        }
+                    };
+                let execution_price = match Decimal::from_str(&execution_price_decode.to_string()) {
+                    Ok(price) => price / data_types::PRICE_MULTIPLIER,
+                    Err(error) => {
+                        warn!("Skipping a SuccessfulOrder with an invalid price: {:?}", error);
+                        continue;
+                    }
+                };
 
                 debug!(
                     "Successful order execution, execution price:{:?}, nonce={:?}",
@@ -1305,11 +1378,15 @@ pub fn extract_execute_batch_outputs(
                     reason_error: None,
                 });
             }
-            // failed order mesg parsing
+            // Parse a failed order message.
             OrderGatewayProxy::FailedOrderMessage::SIGNATURE_HASH => {
-                //
-                let failed_order_message: OrderGatewayProxy::FailedOrderMessage =
-                    log.log_decode().unwrap().inner.data;
+                let failed_order_message: OrderGatewayProxy::FailedOrderMessage = match log.log_decode() {
+                    Ok(decoded_log) => decoded_log.inner.data,
+                    Err(error) => {
+                        warn!("Skipping an undecodable FailedOrderMessage event: {:?}", error);
+                        continue;
+                    }
+                };
                 let nonce: u128 = failed_order_message
                     .order
                     .nonce
@@ -1337,11 +1414,15 @@ pub fn extract_execute_batch_outputs(
                     reason_error: Some(ReasonError::UnknownError),
                 });
             }
-            // failed order bytes parsing
+            // Parse a failed order payload and decode its reason.
             OrderGatewayProxy::FailedOrderBytes::SIGNATURE_HASH => {
-                // decode the error reason string
-                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes =
-                    log.log_decode().unwrap().inner.data;
+                let failed_order_bytes: OrderGatewayProxy::FailedOrderBytes = match log.log_decode() {
+                    Ok(decoded_log) => decoded_log.inner.data,
+                    Err(error) => {
+                        warn!("Skipping an undecodable FailedOrderBytes event: {:?}", error);
+                        continue;
+                    }
+                };
 
                 debug!("failed order bytes struct={:?}", failed_order_bytes);
 
@@ -1377,13 +1458,23 @@ pub fn extract_execute_batch_outputs(
             }
             OrderGatewayProxy::ConditionalOrderExecuted::SIGNATURE_HASH => {
                 let conditional_order_executed: OrderGatewayProxy::ConditionalOrderExecuted =
-                    log.log_decode().unwrap().inner.data;
+                    match log.log_decode() {
+                        Ok(decoded_log) => decoded_log.inner.data,
+                        Err(error) => {
+                            warn!(
+                                "Skipping an undecodable ConditionalOrderExecuted event: {:?}",
+                                error
+                            );
+                            continue;
+                        }
+                    };
                 debug!(
-                    "ConditionalOrderExecuted is executed sucessfully {:?}",
+                    "ConditionalOrderExecuted executed successfully {:?}",
                     conditional_order_executed
                 );
             }
-            _ => { // unknown type here are ignored
+            _ => {
+                // Unknown event types are ignored.
             }
         }
     }
