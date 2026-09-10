@@ -55,14 +55,13 @@ pub fn load_enviroment_config() -> SdkConfig {
         .expect("Private key must be set as environment variable")
         .to_lowercase();
 
-    let stork_api_key = env::var("STORK_API_KEY")
-        .expect("Stork api key must be set as environment variable")
-        .to_lowercase();
+    // Provider credentials are opaque and can be case-sensitive.
+    let stork_api_key =
+        env::var("STORK_API_KEY").expect("Stork api key must be set as environment variable");
 
     let rpc_url = Url::parse(
         env::var("RPC_URL")
             .expect("RPC Url must be set as environment variable")
-            .to_lowercase()
             .as_str(),
     );
 
@@ -188,3 +187,48 @@ pub struct TryAggregateParams {
 pub type StorkSignedPayload = OrderGatewayProxy::StorkSignedPayload;
 pub type StorkPricePayload = OrderGatewayProxy::StorkPricePayload;
 pub type EIP712Signature = OrderGatewayProxy::EIP712Signature;
+
+#[cfg(test)]
+mod config_tests {
+    use super::load_enviroment_config;
+
+    #[test]
+    fn preserves_case_sensitive_provider_credentials() {
+        // Supply every loader input, so dotenv and the developer's environment
+        // cannot affect this regression test. No other SDK test mutates env.
+        let values = [
+            ("CORE_PROXY_ADDRESS", "0xABCD"),
+            ("ORDER_GATEWAY_CONTRACT_ADDRESS", "0xABCD"),
+            ("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS", "0xABCD"),
+            ("ORACLE_ADAPTERS_CONTRACT_ADDRESS", "0xABCD"),
+            ("PASSIVE_POOL_PROXY_ADDRESS", "0xABCD"),
+            ("PRIVATE_KEY", "0xABCD"),
+            ("STORK_API_KEY", "MixedCase-Fixture-Only"),
+            (
+                "RPC_URL",
+                "https://rpc.example.invalid/MixedCaseKey?token=OpaqueToken",
+            ),
+            ("COUNTER_PARTY_ID", "4"),
+        ];
+        let previous: Vec<_> = values
+            .iter()
+            .map(|(key, _)| (*key, std::env::var_os(key)))
+            .collect();
+        for (key, value) in values {
+            std::env::set_var(key, value);
+        }
+        let config = load_enviroment_config();
+        for (key, value) in previous {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+        assert_eq!(
+            config.rpc_url.as_str(),
+            "https://rpc.example.invalid/MixedCaseKey?token=OpaqueToken"
+        );
+        assert_eq!(config.stork_api_key, "MixedCase-Fixture-Only");
+        assert_eq!(config.core_proxy_address, "0xabcd");
+    }
+}
