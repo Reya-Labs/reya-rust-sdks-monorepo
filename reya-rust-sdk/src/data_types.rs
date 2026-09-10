@@ -31,42 +31,46 @@ pub struct SdkConfig {
 pub fn load_enviroment_config() -> SdkConfig {
     dotenv().ok();
 
-    let core_proxy_address = env::var("CORE_PROXY_ADDRESS")
+    load_config_with(|key| env::var(key))
+}
+
+fn load_config_with(read: impl Fn(&str) -> Result<String, env::VarError>) -> SdkConfig {
+    let core_proxy_address = read("CORE_PROXY_ADDRESS")
         .expect("Core proxy address must be set as environment variable")
         .to_lowercase();
 
-    let order_gateway_contract_address = env::var("ORDER_GATEWAY_CONTRACT_ADDRESS")
+    let order_gateway_contract_address = read("ORDER_GATEWAY_CONTRACT_ADDRESS")
         .expect("Order gateway contract address must be set as environment variable")
         .to_lowercase();
 
-    let passiv_perp_instrument_address = env::var("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
+    let passiv_perp_instrument_address = read("PASSIVE_PERP_INSTRUMENT_CONTRACT_ADDRESS")
         .expect("Passive perp instrument address must be set as environment variable")
         .to_lowercase();
 
-    let oracle_adapters_contract_address = env::var("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
+    let oracle_adapters_contract_address = read("ORACLE_ADAPTERS_CONTRACT_ADDRESS")
         .expect("Oracle adapters contract address must be set as environment variable")
         .to_lowercase();
 
-    let passive_pool_proxy_address = env::var("PASSIVE_POOL_PROXY_ADDRESS")
+    let passive_pool_proxy_address = read("PASSIVE_POOL_PROXY_ADDRESS")
         .expect("Passive pool proxy address must be set as environment variable")
         .to_lowercase();
 
-    let private_key = env::var("PRIVATE_KEY")
+    let private_key = read("PRIVATE_KEY")
         .expect("Private key must be set as environment variable")
         .to_lowercase();
 
     // Provider credentials are opaque and can be case-sensitive.
     let stork_api_key =
-        env::var("STORK_API_KEY").expect("Stork api key must be set as environment variable");
+        read("STORK_API_KEY").expect("Stork api key must be set as environment variable");
 
     let rpc_url = Url::parse(
-        env::var("RPC_URL")
+        read("RPC_URL")
             .expect("RPC Url must be set as environment variable")
             .as_str(),
     );
 
     let counter_party_id = u128::from_str_radix(
-        env::var("COUNTER_PARTY_ID")
+        read("COUNTER_PARTY_ID")
             .expect("Counter party id 2 or 4 and must be set as environment variable")
             .as_str(),
         10,
@@ -190,12 +194,11 @@ pub type EIP712Signature = OrderGatewayProxy::EIP712Signature;
 
 #[cfg(test)]
 mod config_tests {
-    use super::load_enviroment_config;
+    use super::load_config_with;
 
     #[test]
     fn preserves_case_sensitive_provider_credentials() {
-        // Supply every loader input, so dotenv and the developer's environment
-        // cannot affect this regression test. No other SDK test mutates env.
+        // Exercise the production parser without mutating process-global env.
         let values = [
             ("CORE_PROXY_ADDRESS", "0xABCD"),
             ("ORDER_GATEWAY_CONTRACT_ADDRESS", "0xABCD"),
@@ -210,20 +213,13 @@ mod config_tests {
             ),
             ("COUNTER_PARTY_ID", "4"),
         ];
-        let previous: Vec<_> = values
-            .iter()
-            .map(|(key, _)| (*key, std::env::var_os(key)))
-            .collect();
-        for (key, value) in values {
-            std::env::set_var(key, value);
-        }
-        let config = load_enviroment_config();
-        for (key, value) in previous {
-            match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
-            }
-        }
+        let config = load_config_with(|key| {
+            values
+                .iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| (*value).to_owned())
+                .ok_or(std::env::VarError::NotPresent)
+        });
         assert_eq!(
             config.rpc_url.as_str(),
             "https://rpc.example.invalid/MixedCaseKey?token=OpaqueToken"
